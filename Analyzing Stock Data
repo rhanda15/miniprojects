@@ -1,0 +1,60 @@
+from utils import *
+
+def display_as_percentage(val):
+  return '{:.1f}%'.format(val * 100)
+
+amazon_prices = [1699.8, 1777.44, 2012.71, 2003.0, 1598.01, 1690.17, 1501.97, 1718.73, 1639.83, 1780.75, 1926.52, 1775.07, 1893.63]
+ebay_prices = [35.98, 33.2, 34.35, 32.77, 28.81, 29.62, 27.86, 33.39, 37.01, 37.0, 38.6, 35.93, 39.5]
+
+# Write code here
+def get_returns(prices):
+  returns = []
+  
+  for i in range(len(prices)-1):
+    start_price = prices[i]
+    end_price = prices[i+1]
+    
+    log_return = calculate_log_return(start_price,end_price)
+    returns.append(log_return)
+   
+  return returns
+
+#Printing the log returns for amazon and ebay 
+amazon_returns = get_returns(amazon_prices)
+#print(amazon_returns)
+ebay_returns = get_returns(ebay_prices)
+#print(ebay_returns)
+
+#Printing the % log returns for amazon and ebay
+amazon_logreturns = [display_as_percentage(i) for i in amazon_returns]
+print(amazon_logreturns)
+ebay_logreturns = [display_as_percentage(i) for i in ebay_returns]
+print(ebay_logreturns)
+
+#calculating the annual rate of return for each stock
+amazon_ror = sum(amazon_returns)
+#print(amazon_ror)
+amazon_lror = display_as_percentage(amazon_ror)
+print('The ARR for amazon is: ', amazon_lror)
+
+ebay_ror = sum(ebay_returns)
+#print(ebay_ror)
+ebay_lror = display_as_percentage(ebay_ror)
+print('The ARR for ebay is: ', ebay_lror)
+
+#ASSESS INVESTMENT RISK
+#1. Variance
+amazon_variance = calculate_variance(amazon_returns)
+print('The VARIANCE in amazon stock returns is: ', display_as_percentage(amazon_variance))
+ebay_variance = calculate_variance(ebay_returns)
+print('The VARIANCE in ebay stock returns is: ', display_as_percentage(ebay_variance))
+
+#2. Standard Deviation
+amazon_stddev = calculate_stddev(amazon_returns)
+print('The STD VAR in amazon stock returns is: ', display_as_percentage(amazon_stddev))
+ebay_stddev = calculate_stddev(ebay_returns)
+print('The STD VAR in ebay stock returns is: ', display_as_percentage(ebay_stddev))
+
+#3. Correlation
+print('The correlation between amazon and ebay is: ', calculate_correlation(amazon_returns, ebay_returns))
+#RESULT: the 2 stocks are closely correlated. It makes sense given both are in technology platform business.
