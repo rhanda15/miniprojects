@@ -2,17 +2,25 @@ require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
+const Database = require('better-sqlite3');
 const Stripe = require('stripe');
 const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- In-Memory Store ---
-// Works on both local and serverless (Vercel). Ideas reset on redeploy.
-// For persistence, swap this out for a database (e.g. Turso, PlanetScale, Supabase).
-let ideas = [];
-let nextId = 1;
+// --- Database Setup ---
+const db = new Database(path.join(__dirname, 'ideas.db'));
+db.pragma('journal_mode = WAL');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ideas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ciphertext TEXT NOT NULL,
+    iv TEXT NOT NULL,
+    auth_tag TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
 // --- Encryption ---
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
@@ -72,6 +80,11 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhoo
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- Prepared Statements ---
+const insertIdea = db.prepare('INSERT INTO ideas (ciphertext, iv, auth_tag) VALUES (?, ?, ?)');
+const getStream = db.prepare('SELECT id, ciphertext, created_at FROM ideas ORDER BY id DESC LIMIT 100');
+const getIdeasByIds = db.prepare(`SELECT id, ciphertext, iv, auth_tag FROM ideas WHERE id IN (${Array(20).fill('?').join(',')})`);
+
 // --- Routes ---
 
 // Flush an idea
@@ -92,21 +105,19 @@ app.post('/api/flush', (req, res) => {
   }
 
   const { ciphertext, iv, authTag } = encrypt(trimmed);
-  const id = nextId++;
-  const created_at = new Date().toISOString();
+  const result = insertIdea.run(ciphertext, iv, authTag);
 
-  ideas.unshift({ id, ciphertext, iv, auth_tag: authTag, created_at });
-  if (ideas.length > 1000) ideas = ideas.slice(0, 1000); // cap memory
-
-  res.json({ id, ciphertext, created_at });
+  res.json({
+    id: result.lastInsertRowid,
+    ciphertext,
+    created_at: new Date().toISOString()
+  });
 });
 
 // Get the stream of encrypted ideas
 app.get('/api/stream', (req, res) => {
-  const stream = ideas.slice(0, 100).map(({ id, ciphertext, created_at }) => ({
-    id, ciphertext, created_at
-  }));
-  res.json(stream);
+  const ideas = getStream.all();
+  res.json(ideas);
 });
 
 // Create Stripe Checkout session
@@ -200,8 +211,9 @@ app.post('/api/decrypt', (req, res) => {
     });
   }
 
-  const requestedIds = new Set(ids.map(Number));
-  const rows = ideas.filter(i => requestedIds.has(i.id));
+  // Pad ids array to 20 for the prepared statement
+  const paddedIds = [...ids.map(Number), ...Array(20 - ids.length).fill(-1)];
+  const rows = getIdeasByIds.all(...paddedIds);
 
   const decrypted = rows.map(row => {
     try {
@@ -224,12 +236,8 @@ app.post('/api/decrypt', (req, res) => {
   res.json({ ideas: decrypted, token: newToken, remaining: payload.decryptionsRemaining - ids.length });
 });
 
-// --- Start (local dev) / Export (Vercel) ---
-if (process.env.VERCEL) {
-  module.exports = app;
-} else {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n  The Porcelain Portal is open on http://localhost:${PORT}\n`);
-    if (!stripe) console.log('  (Stripe not configured - payments disabled)\n');
-  });
-}
+// --- Start ---
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n  The Porcelain Portal is open on http://localhost:${PORT}\n`);
+  if (!stripe) console.log('  (Stripe not configured - payments disabled)\n');
+});
