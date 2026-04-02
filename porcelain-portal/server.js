@@ -237,7 +237,7 @@ app.post('/api/decrypt', (req, res) => {
 });
 
 // --- Start ---
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  The Porcelain Portal is open on http://localhost:${PORT}\n`);
   if (!stripe) console.log('  (Stripe not configured - payments disabled)\n');
 });
