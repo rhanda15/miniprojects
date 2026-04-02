@@ -202,6 +202,10 @@ function addToStream(idea, isNew = false) {
   ideas.unshift(idea);
   if (ideas.length > 100) ideas.pop();
 
+  // Remove empty state if present
+  const empty = streamList.querySelector('.stream-empty');
+  if (empty) empty.remove();
+
   const temp = document.createElement('div');
   temp.innerHTML = createEntryHTML(idea);
   const entry = temp.firstElementChild;

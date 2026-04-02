@@ -513,7 +513,7 @@ body {
 .stream-subtitle {
   text-align: center;
   font-size: 7px;
-  color: #2a6a2a;
+  color: #4a9a4a;
   margin-bottom: 16px;
 }
 
@@ -563,10 +563,10 @@ body {
 .stream-entry {
   font-family: monospace;
   font-size: 10px;
-  color: #2aaa2a;
+  color: #60dd60;
   padding: 8px 10px;
   background: rgba(20, 40, 20, 0.3);
-  border-left: 2px solid #1a4a1a;
+  border-left: 2px solid #2a6a2a;
   border-radius: 0 2px 2px 0;
   word-break: break-all;
   line-height: 1.4;
@@ -576,13 +576,13 @@ body {
 
 .stream-entry .entry-time {
   font-size: 7px;
-  color: #1a5a1a;
+  color: #4a9a4a;
   display: block;
   margin-bottom: 4px;
   font-family: 'Press Start 2P', monospace;
 }
 
-.stream-entry .entry-cipher { opacity: 0.7; }
+.stream-entry .entry-cipher { opacity: 0.85; }
 
 .stream-entry.decryptable {
   cursor: pointer;
@@ -591,7 +591,7 @@ body {
 
 .stream-entry.decryptable:hover {
   background: rgba(40, 80, 40, 0.4);
-  color: #4aff4a;
+  color: #80ff80;
 }
 
 .stream-entry.decryptable:hover .entry-cipher::after {
@@ -632,13 +632,13 @@ body {
 .stream-count {
   text-align: center;
   font-size: 7px;
-  color: #2a5a2a;
+  color: #5aaa5a;
   margin-top: 8px;
 }
 
 .stream-empty {
   text-align: center;
-  color: #1a4a1a;
+  color: #4a8a4a;
   font-size: 8px;
   padding: 40px 20px;
   font-family: 'Press Start 2P', monospace;
