@@ -320,6 +320,12 @@ app.post('/api/graffiti', (req, res) => {
   }
 });
 
+// Free graffiti token (client tracks the 2 free limit)
+app.post('/api/graffiti-free-token', (req, res) => {
+  const token = jwt.sign({ graffitiAccess: true }, JWT_SECRET, { expiresIn: '10m' });
+  res.json({ token });
+});
+
 // Graffiti checkout
 app.post('/api/graffiti-checkout', async (req, res) => {
   if (!stripe) {
