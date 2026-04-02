@@ -83,13 +83,11 @@
         </div>
       </div>
 
-      <!-- COMPACT ACTION BUTTONS -->
-      <div class="action-buttons">
-        <button id="pay-btn" class="action-btn pay-action">&#x1F513; UNLOCK ALL IDEAS - $1.99</button>
-        <div id="token-info" class="token-info" style="display:none;">
-          all ideas unlocked! click any idea below to reveal it
-        </div>
-        <button id="graffiti-toggle-btn" class="action-btn graffiti-action">&#x270D;&#xFE0F; SCRIBBLE ON THE WALL - $0.99</button>
+      </div>
+
+      <!-- SCRIBBLE BUTTON (taped to the wall) -->
+      <div class="scribble-poster-wrapper">
+        <button id="graffiti-toggle-btn" class="scribble-poster">SCRIBBLE ON<br>THE WALL<br><span class="scribble-price">$0.99</span></button>
       </div>
 
       <!-- GRAFFITI PANEL (hidden, expands on click) -->
@@ -142,7 +140,7 @@
     </div>
   </div>
 
-  <!-- SEWER SECTION (right after toilet) -->
+  <!-- SEWER SECTION -->
   <div class="sewer">
     <div class="container">
       <div class="stream-section">
@@ -155,6 +153,14 @@
           <div class="stream-fade-bottom"></div>
         </div>
         <p class="stream-count" id="stream-count">0 ideas flushed into the void</p>
+      </div>
+
+      <!-- UNLOCK BUTTON (beaten-up capsule below sewer) -->
+      <div class="unlock-section">
+        <button id="pay-btn" class="unlock-capsule">&#x1F513; UNLOCK ALL IDEAS - $1.99</button>
+        <div id="token-info" class="token-info" style="display:none;">
+          all ideas unlocked! click any idea above to reveal it
+        </div>
       </div>
 
       <footer class="footer">

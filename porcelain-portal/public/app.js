@@ -270,7 +270,7 @@ payBtn.addEventListener('click', async () => {
     notify(err.message, 'error');
   } finally {
     payBtn.disabled = false;
-    payBtn.textContent = 'UNLOCK ALL IDEAS - $1.99';
+    payBtn.textContent = '\u{1F513} UNLOCK ALL IDEAS - $1.99';
   }
 });
 
@@ -696,9 +696,9 @@ const SewerAnimations = {
 graffitiToggleBtn.addEventListener('click', () => {
   const isVisible = graffitiPanelWrapper.style.display !== 'none';
   graffitiPanelWrapper.style.display = isVisible ? 'none' : 'block';
-  graffitiToggleBtn.textContent = isVisible
-    ? '\u270D\uFE0F SCRIBBLE ON THE WALL - $0.99'
-    : '\u274C CLOSE SCRIBBLE PANEL';
+  graffitiToggleBtn.innerHTML = isVisible
+    ? 'SCRIBBLE ON<br>THE WALL<br><span class="scribble-price">$0.99</span>'
+    : '\u274C CLOSE';
 });
 
 const graffitiWall = document.getElementById('graffiti-wall');
