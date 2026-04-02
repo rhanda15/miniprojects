@@ -89,8 +89,8 @@ ideaInput.addEventListener('input', () => {
   charCount.textContent = len;
   const counter = charCount.parentElement;
   counter.classList.remove('warning', 'danger');
-  if (len > 120) counter.classList.add('danger');
-  else if (len > 100) counter.classList.add('warning');
+  if (len > 950) counter.classList.add('danger');
+  else if (len > 800) counter.classList.add('warning');
 });
 
 // ============================================================
@@ -109,8 +109,8 @@ ideaInput.addEventListener('keydown', (e) => {
 async function flushIdea() {
   const idea = ideaInput.value.trim();
   if (!idea || !currentUsername) return;
-  if (idea.length > 140) {
-    notify('Too long! 140 chars max.', 'error');
+  if (idea.length > 1000) {
+    notify('Too long! 1000 chars max.', 'error');
     return;
   }
 
@@ -202,6 +202,10 @@ function addToStream(idea, isNew = false) {
   ideas.unshift(idea);
   if (ideas.length > 100) ideas.pop();
 
+  // Remove empty state if present
+  const empty = streamList.querySelector('.stream-empty');
+  if (empty) empty.remove();
+
   const temp = document.createElement('div');
   temp.innerHTML = createEntryHTML(idea);
   const entry = temp.firstElementChild;
@@ -265,7 +269,7 @@ payBtn.addEventListener('click', async () => {
     notify(err.message, 'error');
   } finally {
     payBtn.disabled = false;
-    payBtn.textContent = 'UNLOCK 20 IDEAS - $1.99';
+    payBtn.textContent = 'UNLOCK ALL IDEAS - $1.99';
   }
 });
 
@@ -685,6 +689,324 @@ const SewerAnimations = {
 };
 
 // ============================================================
+// GRAFFITI WALL
+// ============================================================
+
+const graffitiWall = document.getElementById('graffiti-wall');
+const graffitiCanvas = document.getElementById('graffiti-canvas');
+const graffitiCtx = graffitiCanvas.getContext('2d');
+const graffitiSubmitBtn = document.getElementById('graffiti-submit-btn');
+const graffitiTextInput = document.getElementById('graffiti-text-input');
+const graffitiClearBtn = document.getElementById('graffiti-clear');
+let graffitiToken = localStorage.getItem('porcelain_graffiti_token');
+let graffitiMode = 'draw';
+let graffitiColor = '#1a1a1a';
+let graffitiTextColor = '#1a1a1a';
+let graffitiSize = 3;
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+let hasDrawn = false;
+
+// Canvas drawing
+graffitiCanvas.addEventListener('mousedown', (e) => {
+  isDrawing = true;
+  const rect = graffitiCanvas.getBoundingClientRect();
+  lastX = (e.clientX - rect.left) * (graffitiCanvas.width / rect.width);
+  lastY = (e.clientY - rect.top) * (graffitiCanvas.height / rect.height);
+  hasDrawn = true;
+});
+
+graffitiCanvas.addEventListener('mousemove', (e) => {
+  if (!isDrawing) return;
+  const rect = graffitiCanvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (graffitiCanvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (graffitiCanvas.height / rect.height);
+
+  graffitiCtx.strokeStyle = graffitiColor;
+  graffitiCtx.lineWidth = graffitiSize;
+  graffitiCtx.lineCap = 'round';
+  graffitiCtx.lineJoin = 'round';
+  graffitiCtx.beginPath();
+  graffitiCtx.moveTo(lastX, lastY);
+  graffitiCtx.lineTo(x, y);
+  graffitiCtx.stroke();
+
+  lastX = x;
+  lastY = y;
+});
+
+graffitiCanvas.addEventListener('mouseup', () => isDrawing = false);
+graffitiCanvas.addEventListener('mouseleave', () => isDrawing = false);
+
+// Touch support
+graffitiCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  isDrawing = true;
+  const rect = graffitiCanvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  lastX = (touch.clientX - rect.left) * (graffitiCanvas.width / rect.width);
+  lastY = (touch.clientY - rect.top) * (graffitiCanvas.height / rect.height);
+  hasDrawn = true;
+});
+
+graffitiCanvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!isDrawing) return;
+  const rect = graffitiCanvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const x = (touch.clientX - rect.left) * (graffitiCanvas.width / rect.width);
+  const y = (touch.clientY - rect.top) * (graffitiCanvas.height / rect.height);
+
+  graffitiCtx.strokeStyle = graffitiColor;
+  graffitiCtx.lineWidth = graffitiSize;
+  graffitiCtx.lineCap = 'round';
+  graffitiCtx.lineJoin = 'round';
+  graffitiCtx.beginPath();
+  graffitiCtx.moveTo(lastX, lastY);
+  graffitiCtx.lineTo(x, y);
+  graffitiCtx.stroke();
+
+  lastX = x;
+  lastY = y;
+});
+
+graffitiCanvas.addEventListener('touchend', () => isDrawing = false);
+
+// Clear canvas
+graffitiClearBtn.addEventListener('click', () => {
+  graffitiCtx.clearRect(0, 0, graffitiCanvas.width, graffitiCanvas.height);
+  hasDrawn = false;
+});
+
+// Tab switching
+document.querySelectorAll('.graffiti-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.graffiti-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    graffitiMode = tab.dataset.tab;
+    document.getElementById('graffiti-draw-panel').style.display = graffitiMode === 'draw' ? '' : 'none';
+    document.getElementById('graffiti-text-panel').style.display = graffitiMode === 'text' ? '' : 'none';
+  });
+});
+
+// Color selection (draw)
+document.querySelectorAll('.color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    graffitiColor = btn.dataset.color;
+  });
+});
+
+// Color selection (text)
+document.querySelectorAll('.text-color-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.text-color-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    graffitiTextColor = btn.dataset.color;
+  });
+});
+
+// Size selection
+document.querySelectorAll('.size-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    graffitiSize = parseInt(btn.dataset.size);
+  });
+});
+
+// Submit graffiti
+graffitiSubmitBtn.addEventListener('click', async () => {
+  // Check if we have a valid token
+  if (!graffitiToken) {
+    await purchaseGraffiti();
+    return;
+  }
+
+  // Verify token isn't expired
+  try {
+    const payload = JSON.parse(atob(graffitiToken.split('.')[1]));
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      graffitiToken = null;
+      localStorage.removeItem('porcelain_graffiti_token');
+      await purchaseGraffiti();
+      return;
+    }
+  } catch {
+    graffitiToken = null;
+    localStorage.removeItem('porcelain_graffiti_token');
+    await purchaseGraffiti();
+    return;
+  }
+
+  await submitGraffiti();
+});
+
+async function purchaseGraffiti() {
+  graffitiSubmitBtn.disabled = true;
+  graffitiSubmitBtn.textContent = 'REDIRECTING...';
+
+  try {
+    const res = await fetch('/api/graffiti-checkout', { method: 'POST' });
+    const data = await res.json();
+
+    if (data.devToken) {
+      // Dev mode - free token
+      graffitiToken = data.devToken;
+      localStorage.setItem('porcelain_graffiti_token', graffitiToken);
+      notify('Dev mode: free scribble granted!', 'success');
+      await submitGraffiti();
+      return;
+    }
+
+    if (data.url) {
+      window.location.href = data.url;
+    }
+  } catch (err) {
+    notify(err.message || 'Checkout failed', 'error');
+  } finally {
+    graffitiSubmitBtn.disabled = false;
+    graffitiSubmitBtn.textContent = 'SCRIBBLE - $0.99';
+  }
+}
+
+async function submitGraffiti() {
+  let type, data, color;
+
+  if (graffitiMode === 'draw') {
+    if (!hasDrawn) {
+      notify('Draw something first!', 'error');
+      return;
+    }
+    type = 'draw';
+    data = graffitiCanvas.toDataURL('image/png');
+    color = graffitiColor;
+  } else {
+    const text = graffitiTextInput.value.trim();
+    if (!text) {
+      notify('Write something first!', 'error');
+      return;
+    }
+    type = 'text';
+    data = text;
+    color = graffitiTextColor;
+  }
+
+  graffitiSubmitBtn.disabled = true;
+  graffitiSubmitBtn.textContent = 'SCRIBBLING...';
+
+  try {
+    const res = await fetch('/api/graffiti', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: graffitiToken,
+        type,
+        data,
+        color,
+        x_pct: Math.random() * 70 + 15,
+        y_pct: Math.random() * 50 + 10,
+        rotation: Math.random() * 12 - 6,
+        username: currentUsername || 'anon'
+      })
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error);
+
+    notify('Scribbled on the wall!', 'success');
+    SoundEngine.playPlop();
+
+    // Clear after submit
+    if (graffitiMode === 'draw') {
+      graffitiCtx.clearRect(0, 0, graffitiCanvas.width, graffitiCanvas.height);
+      hasDrawn = false;
+    } else {
+      graffitiTextInput.value = '';
+    }
+
+    // Invalidate token (one scribble per purchase)
+    graffitiToken = null;
+    localStorage.removeItem('porcelain_graffiti_token');
+
+    // Reload wall
+    loadGraffitiWall();
+  } catch (err) {
+    notify(err.message, 'error');
+    if (err.message.includes('expired') || err.message.includes('Invalid')) {
+      graffitiToken = null;
+      localStorage.removeItem('porcelain_graffiti_token');
+    }
+  } finally {
+    graffitiSubmitBtn.disabled = false;
+    graffitiSubmitBtn.textContent = 'SCRIBBLE - $0.99';
+  }
+}
+
+// Load and display graffiti on the wall
+async function loadGraffitiWall() {
+  try {
+    const res = await fetch('/api/graffiti');
+    const items = await res.json();
+
+    graffitiWall.innerHTML = '';
+
+    for (const item of items) {
+      const el = document.createElement('div');
+      el.className = `graffiti-item ${item.type === 'draw' ? 'draw-graffiti' : 'text-graffiti'}`;
+      el.style.left = item.x_pct + '%';
+      el.style.top = item.y_pct + '%';
+      el.style.transform = `rotate(${item.rotation}deg)`;
+
+      if (item.type === 'draw') {
+        const img = document.createElement('img');
+        img.src = item.data;
+        img.alt = 'graffiti';
+        el.appendChild(img);
+      } else {
+        el.textContent = item.data;
+        el.style.color = item.color;
+      }
+
+      graffitiWall.appendChild(el);
+    }
+  } catch { /* silent */ }
+}
+
+// Check for graffiti payment return
+function checkGraffitiPaymentReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('graffiti_session_id');
+
+  if (sessionId) {
+    pollForGraffitiToken(sessionId);
+    window.history.replaceState({}, '', '/');
+  }
+}
+
+async function pollForGraffitiToken(sessionId, attempts = 0) {
+  if (attempts > 30) {
+    notify('Graffiti payment verification timed out.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/check-graffiti-payment?session_id=${sessionId}`);
+    const data = await res.json();
+
+    if (data.token) {
+      graffitiToken = data.token;
+      localStorage.setItem('porcelain_graffiti_token', graffitiToken);
+      notify('Payment successful! Now draw or write your graffiti and hit SCRIBBLE.', 'success');
+      return;
+    }
+  } catch { /* retry */ }
+
+  setTimeout(() => pollForGraffitiToken(sessionId, attempts + 1), 1000);
+}
+
+// ============================================================
 // MUTE TOGGLE
 // ============================================================
 
@@ -750,8 +1072,10 @@ document.addEventListener('keydown', () => SoundEngine.init(), { once: true });
 initUsername();
 updateMuteUI();
 checkPaymentReturn();
+checkGraffitiPaymentReturn();
 updateTokenUI();
 loadStream();
 loadStats();
+loadGraffitiWall();
 startPolling();
 SewerAnimations.start();
