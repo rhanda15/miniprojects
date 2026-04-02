@@ -21,11 +21,27 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS usernames (
+    username TEXT PRIMARY KEY COLLATE NOCASE,
+    claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    idea_id INTEGER NOT NULL,
+    emoji TEXT NOT NULL CHECK(emoji IN ('poop','fire','brain','puke')),
+    reactor_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(idea_id, reactor_hash, emoji)
+  )
+`);
 
 // --- Encryption ---
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
   ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
-  : crypto.randomBytes(32); // fallback for dev
+  : crypto.randomBytes(32);
 
 if (!process.env.ENCRYPTION_KEY) {
   console.warn('WARNING: No ENCRYPTION_KEY set. Using random key (data won\'t persist across restarts).');
@@ -55,12 +71,12 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
-const paymentTokens = new Map(); // sessionId -> jwt token
+const paymentTokens = new Map();
 
 // --- Rate Limiting ---
 const rateLimits = new Map();
 const RATE_LIMIT_MAX = 10;
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_WINDOW = 60000;
 
 function checkRateLimit(ip) {
   const now = Date.now();
@@ -75,7 +91,6 @@ function checkRateLimit(ip) {
 }
 
 // --- Middleware ---
-// Stripe webhook needs raw body
 app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -84,8 +99,59 @@ app.use(express.static(path.join(__dirname, 'public')));
 const insertIdea = db.prepare('INSERT INTO ideas (ciphertext, iv, auth_tag) VALUES (?, ?, ?)');
 const getStream = db.prepare('SELECT id, ciphertext, created_at FROM ideas ORDER BY id DESC LIMIT 100');
 const getIdeasByIds = db.prepare(`SELECT id, ciphertext, iv, auth_tag FROM ideas WHERE id IN (${Array(20).fill('?').join(',')})`);
+const checkUsername = db.prepare('SELECT 1 FROM usernames WHERE username = ?');
+const insertUsername = db.prepare('INSERT INTO usernames (username) VALUES (?)');
+const insertReaction = db.prepare('INSERT OR IGNORE INTO reactions (idea_id, emoji, reactor_hash) VALUES (?, ?, ?)');
+const getReactionCounts = db.prepare(`
+  SELECT idea_id, emoji, COUNT(*) as count
+  FROM reactions
+  WHERE idea_id IN (${Array(20).fill('?').join(',')})
+  GROUP BY idea_id, emoji
+`);
+const getStatsTotal = db.prepare('SELECT COUNT(*) as total FROM ideas');
+const getStatsPeakHour = db.prepare(`
+  SELECT strftime('%H', created_at) as hour, COUNT(*) as count
+  FROM ideas GROUP BY hour ORDER BY count DESC LIMIT 1
+`);
+const getStatsLast24h = db.prepare(`
+  SELECT COUNT(*) as count FROM ideas WHERE created_at > datetime('now', '-24 hours')
+`);
 
 // --- Routes ---
+
+// Claim a username
+app.post('/api/claim-username', (req, res) => {
+  const ip = req.ip;
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Slow down! Try again in a minute.' });
+  }
+
+  const { username } = req.body;
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ error: 'Username is required.' });
+  }
+
+  const trimmed = username.trim();
+  if (trimmed.length < 3 || trimmed.length > 20) {
+    return res.status(400).json({ error: 'Username must be 3-20 characters.' });
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+    return res.status(400).json({ error: 'Letters, numbers, and underscores only.' });
+  }
+
+  const exists = checkUsername.get(trimmed);
+  if (exists) {
+    return res.status(409).json({ error: 'Username taken. Try another.' });
+  }
+
+  try {
+    insertUsername.run(trimmed);
+    res.json({ ok: true, username: trimmed });
+  } catch (err) {
+    return res.status(409).json({ error: 'Username taken. Try another.' });
+  }
+});
 
 // Flush an idea
 app.post('/api/flush', (req, res) => {
@@ -94,7 +160,7 @@ app.post('/api/flush', (req, res) => {
     return res.status(429).json({ error: 'Too many flushes! Wait a minute.' });
   }
 
-  const { idea } = req.body;
+  const { idea, username } = req.body;
   if (!idea || typeof idea !== 'string') {
     return res.status(400).json({ error: 'Idea is required.' });
   }
@@ -104,7 +170,9 @@ app.post('/api/flush', (req, res) => {
     return res.status(400).json({ error: 'Idea must be 1-140 characters.' });
   }
 
-  const { ciphertext, iv, authTag } = encrypt(trimmed);
+  // Encrypt idea with username embedded
+  const payload = username ? JSON.stringify({ username, idea: trimmed }) : trimmed;
+  const { ciphertext, iv, authTag } = encrypt(payload);
   const result = insertIdea.run(ciphertext, iv, authTag);
 
   res.json({
@@ -114,10 +182,72 @@ app.post('/api/flush', (req, res) => {
   });
 });
 
-// Get the stream of encrypted ideas
+// Get the stream
 app.get('/api/stream', (req, res) => {
   const ideas = getStream.all();
   res.json(ideas);
+});
+
+// Stats
+app.get('/api/stats', (req, res) => {
+  const total = getStatsTotal.get().total;
+  const peakRow = getStatsPeakHour.get();
+  const last24h = getStatsLast24h.get().count;
+
+  res.json({
+    total,
+    peakHour: peakRow ? parseInt(peakRow.hour) : null,
+    last24h,
+    sewerDepth: Math.floor(total / 10)
+  });
+});
+
+// Reactions - get counts
+app.get('/api/reactions', (req, res) => {
+  const idsParam = req.query.ids;
+  if (!idsParam) return res.json({});
+
+  const ids = idsParam.split(',').map(Number).filter(n => !isNaN(n)).slice(0, 20);
+  if (ids.length === 0) return res.json({});
+
+  const paddedIds = [...ids, ...Array(20 - ids.length).fill(-1)];
+  const rows = getReactionCounts.all(...paddedIds);
+
+  const result = {};
+  for (const row of rows) {
+    if (!result[row.idea_id]) result[row.idea_id] = {};
+    result[row.idea_id][row.emoji] = row.count;
+  }
+  res.json(result);
+});
+
+// Reactions - add
+app.post('/api/react', (req, res) => {
+  const { idea_id, emoji, reactor_id } = req.body;
+
+  if (!idea_id || !emoji || !reactor_id) {
+    return res.status(400).json({ error: 'Missing fields.' });
+  }
+
+  const validEmojis = ['poop', 'fire', 'brain', 'puke'];
+  if (!validEmojis.includes(emoji)) {
+    return res.status(400).json({ error: 'Invalid reaction.' });
+  }
+
+  try {
+    insertReaction.run(idea_id, emoji, reactor_id);
+  } catch {
+    // duplicate or constraint violation - that's fine
+  }
+
+  // Return updated counts for this idea
+  const paddedIds = [idea_id, ...Array(19).fill(-1)];
+  const rows = getReactionCounts.all(...paddedIds);
+  const counts = {};
+  for (const row of rows) {
+    counts[row.emoji] = row.count;
+  }
+  res.json({ counts });
 });
 
 // Create Stripe Checkout session
@@ -171,7 +301,7 @@ async function handleWebhook(req, res) {
   res.json({ received: true });
 }
 
-// Check payment status (frontend polls after Stripe redirect)
+// Check payment status
 app.get('/api/check-payment', (req, res) => {
   const { session_id } = req.query;
   if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
@@ -185,7 +315,7 @@ app.get('/api/check-payment', (req, res) => {
   res.json({ token: null });
 });
 
-// Decrypt ideas (requires valid JWT)
+// Decrypt ideas
 app.post('/api/decrypt', (req, res) => {
   const { token, ids } = req.body;
 
@@ -211,19 +341,25 @@ app.post('/api/decrypt', (req, res) => {
     });
   }
 
-  // Pad ids array to 20 for the prepared statement
   const paddedIds = [...ids.map(Number), ...Array(20 - ids.length).fill(-1)];
   const rows = getIdeasByIds.all(...paddedIds);
 
   const decrypted = rows.map(row => {
     try {
-      return { id: row.id, idea: decrypt(row.ciphertext, row.iv, row.auth_tag) };
+      const plaintext = decrypt(row.ciphertext, row.iv, row.auth_tag);
+      // Try to parse as JSON (new format with username)
+      try {
+        const parsed = JSON.parse(plaintext);
+        return { id: row.id, idea: parsed.idea, username: parsed.username };
+      } catch {
+        // Legacy format: plain string
+        return { id: row.id, idea: plaintext, username: 'anonymous' };
+      }
     } catch {
-      return { id: row.id, idea: '[decryption failed]' };
+      return { id: row.id, idea: '[decryption failed]', username: 'unknown' };
     }
   });
 
-  // Issue new token with decremented count
   const newToken = jwt.sign(
     {
       decryptionsRemaining: payload.decryptionsRemaining - ids.length,
