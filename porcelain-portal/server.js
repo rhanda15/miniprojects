@@ -1,0 +1,243 @@
+require('dotenv').config();
+const express = require('express');
+const crypto = require('crypto');
+const path = require('path');
+const Database = require('better-sqlite3');
+const Stripe = require('stripe');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// --- Database Setup ---
+const db = new Database(path.join(__dirname, 'ideas.db'));
+db.pragma('journal_mode = WAL');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ideas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ciphertext TEXT NOT NULL,
+    iv TEXT NOT NULL,
+    auth_tag TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// --- Encryption ---
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
+  ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
+  : crypto.randomBytes(32); // fallback for dev
+
+if (!process.env.ENCRYPTION_KEY) {
+  console.warn('WARNING: No ENCRYPTION_KEY set. Using random key (data won\'t persist across restarts).');
+  console.log('Generate one: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+}
+
+function encrypt(plaintext) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag().toString('hex');
+  return { ciphertext: encrypted, iv: iv.toString('hex'), authTag };
+}
+
+function decrypt(ciphertext, ivHex, authTagHex) {
+  const decipher = crypto.createDecipheriv('aes-256-gcm', ENCRYPTION_KEY, Buffer.from(ivHex, 'hex'));
+  decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+  let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+
+// --- Stripe Setup ---
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const paymentTokens = new Map(); // sessionId -> jwt token
+
+// --- Rate Limiting ---
+const rateLimits = new Map();
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimits.get(ip);
+  if (!entry || now > entry.resetTime) {
+    rateLimits.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+// --- Middleware ---
+// Stripe webhook needs raw body
+app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// --- Prepared Statements ---
+const insertIdea = db.prepare('INSERT INTO ideas (ciphertext, iv, auth_tag) VALUES (?, ?, ?)');
+const getStream = db.prepare('SELECT id, ciphertext, created_at FROM ideas ORDER BY id DESC LIMIT 100');
+const getIdeasByIds = db.prepare(`SELECT id, ciphertext, iv, auth_tag FROM ideas WHERE id IN (${Array(20).fill('?').join(',')})`);
+
+// --- Routes ---
+
+// Flush an idea
+app.post('/api/flush', (req, res) => {
+  const ip = req.ip;
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many flushes! Wait a minute.' });
+  }
+
+  const { idea } = req.body;
+  if (!idea || typeof idea !== 'string') {
+    return res.status(400).json({ error: 'Idea is required.' });
+  }
+
+  const trimmed = idea.trim();
+  if (trimmed.length === 0 || trimmed.length > 140) {
+    return res.status(400).json({ error: 'Idea must be 1-140 characters.' });
+  }
+
+  const { ciphertext, iv, authTag } = encrypt(trimmed);
+  const result = insertIdea.run(ciphertext, iv, authTag);
+
+  res.json({
+    id: result.lastInsertRowid,
+    ciphertext,
+    created_at: new Date().toISOString()
+  });
+});
+
+// Get the stream of encrypted ideas
+app.get('/api/stream', (req, res) => {
+  const ideas = getStream.all();
+  res.json(ideas);
+});
+
+// Create Stripe Checkout session
+app.post('/api/checkout', async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ error: 'Payments not configured. Set STRIPE_SECRET_KEY in .env' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price: process.env.STRIPE_PRICE_ID,
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${req.protocol}://${req.get('host')}/?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.protocol}://${req.get('host')}/?cancelled=true`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Stripe checkout error:', err.message);
+    res.status(500).json({ error: 'Failed to create checkout session.' });
+  }
+});
+
+// Stripe webhook
+async function handleWebhook(req, res) {
+  if (!stripe) return res.status(503).send('Payments not configured');
+
+  let event;
+  try {
+    const sig = req.headers['stripe-signature'];
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const token = jwt.sign(
+      { decryptionsRemaining: 20, sessionId: session.id },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    paymentTokens.set(session.id, token);
+  }
+
+  res.json({ received: true });
+}
+
+// Check payment status (frontend polls after Stripe redirect)
+app.get('/api/check-payment', (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
+
+  const token = paymentTokens.get(session_id);
+  if (token) {
+    paymentTokens.delete(session_id);
+    return res.json({ token });
+  }
+
+  res.json({ token: null });
+});
+
+// Decrypt ideas (requires valid JWT)
+app.post('/api/decrypt', (req, res) => {
+  const { token, ids } = req.body;
+
+  if (!token || !ids || !Array.isArray(ids)) {
+    return res.status(400).json({ error: 'Token and ids array required.' });
+  }
+
+  if (ids.length > 20) {
+    return res.status(400).json({ error: 'Maximum 20 ideas per request.' });
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid or expired token. Purchase again to decrypt more.' });
+  }
+
+  if (payload.decryptionsRemaining < ids.length) {
+    return res.status(403).json({
+      error: `Only ${payload.decryptionsRemaining} decryptions remaining.`,
+      remaining: payload.decryptionsRemaining
+    });
+  }
+
+  // Pad ids array to 20 for the prepared statement
+  const paddedIds = [...ids.map(Number), ...Array(20 - ids.length).fill(-1)];
+  const rows = getIdeasByIds.all(...paddedIds);
+
+  const decrypted = rows.map(row => {
+    try {
+      return { id: row.id, idea: decrypt(row.ciphertext, row.iv, row.auth_tag) };
+    } catch {
+      return { id: row.id, idea: '[decryption failed]' };
+    }
+  });
+
+  // Issue new token with decremented count
+  const newToken = jwt.sign(
+    {
+      decryptionsRemaining: payload.decryptionsRemaining - ids.length,
+      sessionId: payload.sessionId
+    },
+    JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+  res.json({ ideas: decrypted, token: newToken, remaining: payload.decryptionsRemaining - ids.length });
+});
+
+// --- Start ---
+app.listen(PORT, () => {
+  console.log(`\n  The Porcelain Portal is open on http://localhost:${PORT}\n`);
+  if (!stripe) console.log('  (Stripe not configured - payments disabled)\n');
+});

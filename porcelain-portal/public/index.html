@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Porcelain Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">THE PORCELAIN PORTAL</h1>
+    <p class="subtitle">flush your thoughts into the void</p>
+
+    <!-- TOILET SECTION -->
+    <div class="toilet-section">
+      <div class="toilet" id="toilet">
+        <!-- Toilet tank -->
+        <div class="toilet-tank">
+          <div class="tank-handle"></div>
+        </div>
+        <!-- Toilet bowl -->
+        <div class="toilet-bowl">
+          <div class="bowl-inner">
+            <div class="water" id="water"></div>
+            <textarea
+              id="idea-input"
+              maxlength="140"
+              placeholder="type your worst (or best) idea..."
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="bowl-rim"></div>
+        </div>
+        <!-- Toilet base -->
+        <div class="toilet-base"></div>
+      </div>
+
+      <div class="input-controls">
+        <span class="char-counter"><span id="char-count">0</span>/140</span>
+        <button id="flush-btn" class="flush-btn">
+          FLUSH IT
+        </button>
+      </div>
+    </div>
+
+    <!-- PAYWALL SECTION -->
+    <div class="paywall-section">
+      <div class="paywall-box" id="paywall-box">
+        <p class="paywall-title">PLUNGE THE DEPTHS</p>
+        <p class="paywall-desc">pay $1.99 to decrypt & read 20 flushed ideas</p>
+        <button id="pay-btn" class="pay-btn">UNLOCK 20 IDEAS - $1.99</button>
+        <div id="token-info" class="token-info" style="display:none;">
+          <span id="remaining-count">0</span> decryptions remaining
+          <br><small>click any idea in the stream to reveal it</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- STREAM SECTION -->
+    <div class="stream-section">
+      <h2 class="stream-title">THE SEWER</h2>
+      <p class="stream-subtitle">a stream of encrypted consciousness</p>
+      <div class="stream-container" id="stream-container">
+        <div class="stream-fade-top"></div>
+        <div class="stream-list" id="stream-list">
+          <!-- Ideas will be injected here -->
+        </div>
+        <div class="stream-fade-bottom"></div>
+      </div>
+      <p class="stream-count" id="stream-count">0 ideas flushed into the void</p>
+    </div>
+
+    <footer class="footer">
+      <p>ideas are encrypted with AES-256-GCM. nobody can read them. not even us. (unless you pay.)</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
