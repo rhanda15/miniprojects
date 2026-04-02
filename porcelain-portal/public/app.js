@@ -9,12 +9,81 @@ const tokenInfo = document.getElementById('token-info');
 const remainingCount = document.getElementById('remaining-count');
 const streamList = document.getElementById('stream-list');
 const streamCount = document.getElementById('stream-count');
+const usernameSection = document.getElementById('username-section');
+const usernameDisplay = document.getElementById('username-display');
+const usernameInput = document.getElementById('username-input');
+const claimBtn = document.getElementById('claim-btn');
+const currentUsernameEl = document.getElementById('current-username');
+const muteBtn = document.getElementById('mute-btn');
+const sewerDecorations = document.getElementById('sewer-decorations');
 
 // === State ===
 let decryptToken = localStorage.getItem('porcelain_token');
+let currentUsername = localStorage.getItem('porcelain_username');
+let reactorId = localStorage.getItem('porcelain_reactor');
 let ideas = [];
+let isMuted = localStorage.getItem('porcelain_muted') === 'true';
 
-// === Character Counter ===
+if (!reactorId) {
+  reactorId = crypto.randomUUID();
+  localStorage.setItem('porcelain_reactor', reactorId);
+}
+
+// ============================================================
+// USERNAME SYSTEM
+// ============================================================
+
+function initUsername() {
+  if (currentUsername) {
+    usernameSection.style.display = 'none';
+    usernameDisplay.style.display = 'block';
+    currentUsernameEl.textContent = '@' + currentUsername;
+    flushBtn.disabled = false;
+  } else {
+    usernameSection.style.display = 'flex';
+    usernameDisplay.style.display = 'none';
+    flushBtn.disabled = true;
+  }
+}
+
+claimBtn.addEventListener('click', claimUsername);
+usernameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') claimUsername();
+});
+
+async function claimUsername() {
+  const name = usernameInput.value.trim();
+  if (!name) return;
+
+  claimBtn.disabled = true;
+  claimBtn.textContent = '...';
+
+  try {
+    const res = await fetch('/api/claim-username', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: name })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    currentUsername = data.username;
+    localStorage.setItem('porcelain_username', currentUsername);
+    initUsername();
+    notify('Handle claimed: @' + currentUsername, 'success');
+  } catch (err) {
+    notify(err.message, 'error');
+  } finally {
+    claimBtn.disabled = false;
+    claimBtn.textContent = 'CLAIM';
+  }
+}
+
+// ============================================================
+// CHARACTER COUNTER
+// ============================================================
+
 ideaInput.addEventListener('input', () => {
   const len = ideaInput.value.length;
   charCount.textContent = len;
@@ -24,7 +93,10 @@ ideaInput.addEventListener('input', () => {
   else if (len > 100) counter.classList.add('warning');
 });
 
-// === Flush ===
+// ============================================================
+// FLUSH
+// ============================================================
+
 flushBtn.addEventListener('click', flushIdea);
 
 ideaInput.addEventListener('keydown', (e) => {
@@ -36,7 +108,7 @@ ideaInput.addEventListener('keydown', (e) => {
 
 async function flushIdea() {
   const idea = ideaInput.value.trim();
-  if (!idea) return;
+  if (!idea || !currentUsername) return;
   if (idea.length > 140) {
     notify('Too long! 140 chars max.', 'error');
     return;
@@ -49,32 +121,28 @@ async function flushIdea() {
     const res = await fetch('/api/flush', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idea })
+      body: JSON.stringify({ idea, username: currentUsername })
     });
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Flush failed');
 
-    // Trigger flush animation
+    // Animation + sound
     toilet.classList.add('flushing');
     water.classList.add('swirl');
+    SoundEngine.playPlop();
+    setTimeout(() => SoundEngine.playFlush(), 150);
 
     setTimeout(() => {
       toilet.classList.remove('flushing');
       water.classList.remove('swirl');
-    }, 1000);
+    }, 1200);
 
-    // Clear input
     ideaInput.value = '';
     charCount.textContent = '0';
     charCount.parentElement.classList.remove('warning', 'danger');
 
-    // Add to stream
-    addToStream({
-      id: data.id,
-      ciphertext: data.ciphertext,
-      created_at: data.created_at
-    }, true);
+    addToStream({ id: data.id, ciphertext: data.ciphertext, created_at: data.created_at }, true);
 
     flushBtn.textContent = 'FLUSHED!';
     flushBtn.classList.add('flushed');
@@ -83,6 +151,7 @@ async function flushIdea() {
       flushBtn.classList.remove('flushed');
     }, 1500);
 
+    loadStats();
   } catch (err) {
     notify(err.message, 'error');
     flushBtn.textContent = 'FLUSH IT';
@@ -91,14 +160,17 @@ async function flushIdea() {
   }
 }
 
-// === Stream ===
+// ============================================================
+// STREAM
+// ============================================================
+
 async function loadStream() {
   try {
     const res = await fetch('/api/stream');
     const data = await res.json();
     ideas = data;
     renderStream();
-  } catch (err) {
+  } catch {
     streamList.innerHTML = '<div class="stream-empty">failed to load the sewer...<br>try refreshing</div>';
   }
 }
@@ -138,8 +210,7 @@ function addToStream(idea, isNew = false) {
   streamList.prepend(entry);
   updateDecryptableState();
 
-  // Remove oldest if over 100
-  while (streamList.children.length > 102) { // +2 for fade elements
+  while (streamList.children.length > 102) {
     streamList.removeChild(streamList.lastChild);
   }
 
@@ -147,7 +218,6 @@ function addToStream(idea, isNew = false) {
 }
 
 function formatCipher(hex) {
-  // Show garbled text - mix of hex and special chars for visual effect
   const chars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
   let garbled = '';
   for (let i = 0; i < Math.min(hex.length, 60); i++) {
@@ -162,16 +232,17 @@ function formatCipher(hex) {
 
 function formatTime(isoString) {
   const d = new Date(isoString);
-  const now = new Date();
-  const diff = now - d;
-
+  const diff = Date.now() - d;
   if (diff < 60000) return 'just now';
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return d.toLocaleDateString();
 }
 
-// === Payment ===
+// ============================================================
+// PAYMENT
+// ============================================================
+
 payBtn.addEventListener('click', async () => {
   payBtn.disabled = true;
   payBtn.textContent = 'REDIRECTING...';
@@ -198,7 +269,6 @@ payBtn.addEventListener('click', async () => {
   }
 });
 
-// Check for returning from Stripe
 function checkPaymentReturn() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get('session_id');
@@ -234,9 +304,7 @@ async function pollForToken(sessionId, attempts = 0) {
       notify('Payment successful! Click ideas to decrypt them.', 'success');
       return;
     }
-  } catch (err) {
-    // retry
-  }
+  } catch { /* retry */ }
 
   setTimeout(() => pollForToken(sessionId, attempts + 1), 1000);
 }
@@ -249,7 +317,6 @@ function updateTokenUI() {
   }
 
   try {
-    // Decode JWT payload (not verify - that's server-side)
     const payload = JSON.parse(atob(decryptToken.split('.')[1]));
     const remaining = payload.decryptionsRemaining;
 
@@ -266,7 +333,6 @@ function updateTokenUI() {
     tokenInfo.style.display = 'block';
     payBtn.style.display = 'none';
 
-    // Check if token is expired
     if (payload.exp && payload.exp * 1000 < Date.now()) {
       decryptToken = null;
       localStorage.removeItem('porcelain_token');
@@ -293,8 +359,7 @@ function updateDecryptableState() {
 }
 
 async function decryptEntry(entry) {
-  if (!decryptToken) return;
-  if (entry.classList.contains('decrypted')) return;
+  if (!decryptToken || entry.classList.contains('decrypted')) return;
 
   const id = parseInt(entry.dataset.id);
   try {
@@ -315,25 +380,329 @@ async function decryptEntry(entry) {
       throw new Error(data.error || 'Decryption failed');
     }
 
-    // Update token
     decryptToken = data.token;
     localStorage.setItem('porcelain_token', data.token);
     updateTokenUI();
 
-    // Reveal the idea
     if (data.ideas && data.ideas.length > 0) {
+      const item = data.ideas[0];
       const cipher = entry.querySelector('.entry-cipher');
-      cipher.textContent = data.ideas[0].idea;
+      cipher.innerHTML = `<span class="entry-username">@${item.username}:</span> ${escapeHtml(item.idea)}`;
       entry.classList.remove('decryptable');
       entry.classList.add('decrypted');
       entry.onclick = null;
+
+      // Add reaction bar
+      addReactionBar(entry, id);
     }
   } catch (err) {
     notify(err.message, 'error');
   }
 }
 
-// === Notifications ===
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ============================================================
+// REACTIONS
+// ============================================================
+
+const EMOJI_MAP = {
+  poop: '\u{1F4A9}',
+  fire: '\u{1F525}',
+  brain: '\u{1F9E0}',
+  puke: '\u{1F92E}'
+};
+
+const myReactions = new Set(JSON.parse(localStorage.getItem('porcelain_reactions') || '[]'));
+
+function saveMyReactions() {
+  localStorage.setItem('porcelain_reactions', JSON.stringify([...myReactions]));
+}
+
+async function addReactionBar(entry, ideaId) {
+  const bar = document.createElement('div');
+  bar.className = 'reaction-bar';
+
+  // Fetch existing counts
+  let counts = {};
+  try {
+    const res = await fetch(`/api/reactions?ids=${ideaId}`);
+    const data = await res.json();
+    counts = data[ideaId] || {};
+  } catch { /* no counts */ }
+
+  for (const [key, emoji] of Object.entries(EMOJI_MAP)) {
+    const btn = document.createElement('button');
+    btn.className = 'reaction-btn';
+    const reactionKey = `${ideaId}:${key}`;
+    if (myReactions.has(reactionKey)) btn.classList.add('reacted');
+
+    const count = counts[key] || 0;
+    btn.innerHTML = `${emoji} <span class="reaction-count">${count}</span>`;
+
+    btn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/react', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idea_id: ideaId, emoji: key, reactor_id: reactorId })
+        });
+        const data = await res.json();
+        if (data.counts) {
+          btn.querySelector('.reaction-count').textContent = data.counts[key] || 0;
+          myReactions.add(reactionKey);
+          btn.classList.add('reacted');
+          saveMyReactions();
+        }
+      } catch { /* silent */ }
+    });
+
+    bar.appendChild(btn);
+  }
+
+  entry.appendChild(bar);
+}
+
+// ============================================================
+// STATS
+// ============================================================
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/stats');
+    const data = await res.json();
+
+    document.getElementById('stat-total').textContent = data.total;
+    document.getElementById('stat-depth').textContent = data.sewerDepth + 'm';
+    document.getElementById('stat-today').textContent = data.last24h;
+
+    if (data.peakHour !== null) {
+      const h = data.peakHour;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+      document.getElementById('stat-peak').textContent = hour12 + ampm;
+    } else {
+      document.getElementById('stat-peak').textContent = '--';
+    }
+  } catch { /* silent */ }
+}
+
+// ============================================================
+// SOUND ENGINE (Web Audio API)
+// ============================================================
+
+const SoundEngine = {
+  ctx: null,
+  dripInterval: null,
+
+  init() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.startDrips();
+  },
+
+  playFlush() {
+    if (!this.ctx || isMuted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    // White noise for water rush
+    const bufferSize = ctx.sampleRate * 1.5;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.5;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(900, now);
+    filter.frequency.exponentialRampToValueAtTime(150, now + 1.4);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.25, now + 0.1);
+    gain.gain.setValueAtTime(0.25, now + 0.8);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + 1.5);
+
+    // Low rumble
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(70, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 1.2);
+
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0.1, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.01, now + 1.3);
+
+    osc.connect(oscGain);
+    oscGain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.3);
+  },
+
+  playPlop() {
+    if (!this.ctx || isMuted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(250, now);
+    osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.3, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  },
+
+  playDrip() {
+    if (!this.ctx || isMuted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const freq = 1200 + Math.random() * 1200;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.05);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.06);
+  },
+
+  playSqueak() {
+    if (!this.ctx || isMuted) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    for (let i = 0; i < 3; i++) {
+      const t = now + i * 0.08;
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(2000 + Math.random() * 500, t);
+      osc.frequency.exponentialRampToValueAtTime(1500, t + 0.04);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.03, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.05);
+    }
+  },
+
+  startDrips() {
+    const scheduleDrip = () => {
+      this.playDrip();
+      this.dripInterval = setTimeout(scheduleDrip, 3000 + Math.random() * 6000);
+    };
+    this.dripInterval = setTimeout(scheduleDrip, 2000);
+  }
+};
+
+// ============================================================
+// SEWER ANIMATIONS
+// ============================================================
+
+const SewerAnimations = {
+  floaterInterval: null,
+  ratTimeout: null,
+
+  start() {
+    this.scheduleFloater();
+    this.scheduleRat();
+  },
+
+  scheduleFloater() {
+    const spawn = () => {
+      this.spawnFloater();
+      this.floaterInterval = setTimeout(spawn, 2000 + Math.random() * 3000);
+    };
+    this.floaterInterval = setTimeout(spawn, 1000);
+  },
+
+  spawnFloater() {
+    if (!sewerDecorations) return;
+
+    const types = ['floater-turd', 'floater-bubble', 'floater-bubble', 'floater-paper'];
+    const type = types[Math.floor(Math.random() * types.length)];
+
+    const el = document.createElement('div');
+    el.className = `floater ${type}`;
+    el.style.left = (10 + Math.random() * 80) + '%';
+    el.style.setProperty('--drift', (Math.random() * 40 - 20) + 'px');
+    el.style.animationDuration = (6 + Math.random() * 8) + 's';
+
+    sewerDecorations.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  },
+
+  scheduleRat() {
+    const spawn = () => {
+      this.spawnRat();
+      this.ratTimeout = setTimeout(spawn, 30000 + Math.random() * 60000);
+    };
+    this.ratTimeout = setTimeout(spawn, 15000 + Math.random() * 30000);
+  },
+
+  spawnRat() {
+    if (!sewerDecorations) return;
+
+    const rat = document.createElement('div');
+    rat.className = 'pixel-rat';
+    sewerDecorations.appendChild(rat);
+
+    SoundEngine.playSqueak();
+    rat.addEventListener('animationend', () => rat.remove());
+  }
+};
+
+// ============================================================
+// MUTE TOGGLE
+// ============================================================
+
+function updateMuteUI() {
+  muteBtn.textContent = isMuted ? '\u{1F507}' : '\u{1F50A}';
+  muteBtn.classList.toggle('muted', isMuted);
+}
+
+muteBtn.addEventListener('click', () => {
+  isMuted = !isMuted;
+  localStorage.setItem('porcelain_muted', isMuted);
+  updateMuteUI();
+});
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
 function notify(message, type = 'info') {
   const el = document.createElement('div');
   el.className = `notification ${type}`;
@@ -347,29 +716,42 @@ function notify(message, type = 'info') {
   }, 3000);
 }
 
-// === Polling ===
+// ============================================================
+// POLLING
+// ============================================================
+
 function startPolling() {
   setInterval(async () => {
     try {
       const res = await fetch('/api/stream');
       const data = await res.json();
 
-      // Find new ideas
       const existingIds = new Set(ideas.map(i => i.id));
       const newIdeas = data.filter(i => !existingIds.has(i.id));
 
       if (newIdeas.length > 0) {
-        // Add new ones to the top
         newIdeas.reverse().forEach(idea => addToStream(idea, true));
       }
-    } catch {
-      // silent fail on poll
-    }
+    } catch { /* silent */ }
   }, 10000);
+
+  // Stats polling
+  setInterval(loadStats, 30000);
 }
 
-// === Init ===
+// ============================================================
+// INIT
+// ============================================================
+
+// Init audio on first interaction
+document.addEventListener('click', () => SoundEngine.init(), { once: true });
+document.addEventListener('keydown', () => SoundEngine.init(), { once: true });
+
+initUsername();
+updateMuteUI();
 checkPaymentReturn();
 updateTokenUI();
 loadStream();
+loadStats();
 startPolling();
+SewerAnimations.start();
