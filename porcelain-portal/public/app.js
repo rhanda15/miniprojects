@@ -89,8 +89,8 @@ ideaInput.addEventListener('input', () => {
   charCount.textContent = len;
   const counter = charCount.parentElement;
   counter.classList.remove('warning', 'danger');
-  if (len > 120) counter.classList.add('danger');
-  else if (len > 100) counter.classList.add('warning');
+  if (len > 950) counter.classList.add('danger');
+  else if (len > 800) counter.classList.add('warning');
 });
 
 // ============================================================
@@ -109,8 +109,8 @@ ideaInput.addEventListener('keydown', (e) => {
 async function flushIdea() {
   const idea = ideaInput.value.trim();
   if (!idea || !currentUsername) return;
-  if (idea.length > 140) {
-    notify('Too long! 140 chars max.', 'error');
+  if (idea.length > 1000) {
+    notify('Too long! 1000 chars max.', 'error');
     return;
   }
 

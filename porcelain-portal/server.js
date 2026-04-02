@@ -166,8 +166,8 @@ app.post('/api/flush', (req, res) => {
   }
 
   const trimmed = idea.trim();
-  if (trimmed.length === 0 || trimmed.length > 140) {
-    return res.status(400).json({ error: 'Idea must be 1-140 characters.' });
+  if (trimmed.length === 0 || trimmed.length > 1000) {
+    return res.status(400).json({ error: 'Idea must be 1-1000 characters.' });
   }
 
   // Encrypt idea with username embedded
