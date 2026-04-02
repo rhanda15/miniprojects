@@ -134,6 +134,16 @@ const getStatsPeakHour = db.prepare(`
 const getStatsLast24h = db.prepare(`
   SELECT COUNT(*) as count FROM ideas WHERE created_at > datetime('now', '-24 hours')
 `);
+const getTrending = db.prepare(`
+  SELECT r.idea_id, i.ciphertext, i.iv, i.auth_tag, i.created_at,
+         COUNT(*) as total_reactions
+  FROM reactions r
+  JOIN ideas i ON i.id = r.idea_id
+  WHERE r.created_at > datetime('now', '-24 hours')
+  GROUP BY r.idea_id
+  ORDER BY total_reactions DESC
+  LIMIT 5
+`);
 
 // --- Routes ---
 
@@ -218,6 +228,77 @@ app.get('/api/stats', (req, res) => {
     last24h,
     sewerDepth: Math.floor(total / 10)
   });
+});
+
+// Trending - most reacted ideas in last 24h (decrypted for display)
+app.get('/api/trending', (req, res) => {
+  const rows = getTrending.all();
+
+  const trendingIds = rows.map(r => r.idea_id);
+  if (trendingIds.length === 0) return res.json([]);
+
+  // Get reaction breakdowns
+  const paddedIds = [...trendingIds, ...Array(20 - trendingIds.length).fill(-1)];
+  const reactionRows = getReactionCounts.all(...paddedIds);
+  const reactionMap = {};
+  for (const r of reactionRows) {
+    if (!reactionMap[r.idea_id]) reactionMap[r.idea_id] = {};
+    reactionMap[r.idea_id][r.emoji] = r.count;
+  }
+
+  const trending = rows.map(row => {
+    let idea = '[encrypted]';
+    let username = 'anonymous';
+    try {
+      const plaintext = decrypt(row.ciphertext, row.iv, row.auth_tag);
+      try {
+        const parsed = JSON.parse(plaintext);
+        idea = parsed.idea;
+        username = parsed.username;
+      } catch {
+        idea = plaintext;
+      }
+    } catch { /* decryption failed */ }
+
+    return {
+      id: row.idea_id,
+      idea,
+      username,
+      reactions: reactionMap[row.idea_id] || {},
+      total_reactions: row.total_reactions,
+      created_at: row.created_at
+    };
+  });
+
+  res.json(trending);
+});
+
+// Free decrypt (limited client-side, server just decrypts)
+app.post('/api/free-decrypt', (req, res) => {
+  const { ids } = req.body;
+
+  if (!ids || !Array.isArray(ids) || ids.length > 1) {
+    return res.status(400).json({ error: 'Provide exactly 1 id for free decrypt.' });
+  }
+
+  const paddedIds = [...ids.map(Number), ...Array(20 - ids.length).fill(-1)];
+  const rows = getIdeasByIds.all(...paddedIds);
+
+  const decrypted = rows.map(row => {
+    try {
+      const plaintext = decrypt(row.ciphertext, row.iv, row.auth_tag);
+      try {
+        const parsed = JSON.parse(plaintext);
+        return { id: row.id, idea: parsed.idea, username: parsed.username };
+      } catch {
+        return { id: row.id, idea: plaintext, username: 'anonymous' };
+      }
+    } catch {
+      return { id: row.id, idea: '[decryption failed]', username: 'unknown' };
+    }
+  });
+
+  res.json({ ideas: decrypted });
 });
 
 // Reactions - get counts
