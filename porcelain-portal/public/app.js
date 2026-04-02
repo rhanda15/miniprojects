@@ -26,6 +26,13 @@ let ideas = [];
 let isMuted = localStorage.getItem('porcelain_muted') === 'true';
 let freeScribblesUsed = parseInt(localStorage.getItem('porcelain_free_scribbles') || '0');
 const FREE_SCRIBBLE_LIMIT = 2;
+let freeDecryptsUsed = parseInt(localStorage.getItem('porcelain_free_decrypts') || '0');
+const FREE_DECRYPT_LIMIT = 5;
+const freeDecryptInfo = document.getElementById('free-decrypt-info');
+const freeDecryptCount = document.getElementById('free-decrypt-count');
+const shareOverlay = document.getElementById('share-overlay');
+const shareCanvas = document.getElementById('share-canvas');
+const shareCtx = shareCanvas.getContext('2d');
 
 if (!reactorId) {
   reactorId = crypto.randomUUID();
@@ -351,56 +358,102 @@ function updateTokenUI() {
   }
 }
 
+function canDecrypt() {
+  return decryptToken || freeDecryptsUsed < FREE_DECRYPT_LIMIT;
+}
+
+function updateFreeDecryptUI() {
+  const remaining = FREE_DECRYPT_LIMIT - freeDecryptsUsed;
+  if (remaining <= 0 || decryptToken) {
+    freeDecryptInfo.style.display = 'none';
+  } else {
+    freeDecryptInfo.style.display = 'block';
+    freeDecryptCount.textContent = remaining;
+  }
+  // Hide pay button if free decrypts remain
+  if (remaining > 0 && !decryptToken) {
+    payBtn.style.opacity = '0.5';
+  } else if (!decryptToken) {
+    payBtn.style.opacity = '1';
+  }
+}
+
 function updateDecryptableState() {
   const entries = streamList.querySelectorAll('.stream-entry');
   entries.forEach(entry => {
-    if (decryptToken && !entry.classList.contains('decrypted')) {
+    if (canDecrypt() && !entry.classList.contains('decrypted')) {
       entry.classList.add('decryptable');
       entry.onclick = () => decryptEntry(entry);
-    } else if (!decryptToken) {
+    } else if (!canDecrypt()) {
       entry.classList.remove('decryptable');
       entry.onclick = null;
     }
   });
+  updateFreeDecryptUI();
 }
 
 async function decryptEntry(entry) {
-  if (!decryptToken || entry.classList.contains('decrypted')) return;
+  if (entry.classList.contains('decrypted')) return;
+  if (!canDecrypt()) return;
 
   const id = parseInt(entry.dataset.id);
+  const usingFree = !decryptToken && freeDecryptsUsed < FREE_DECRYPT_LIMIT;
+
   try {
-    const res = await fetch('/api/decrypt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: decryptToken, ids: [id] })
-    });
+    let data;
 
-    const data = await res.json();
-    if (!res.ok) {
-      if (res.status === 401) {
-        decryptToken = null;
-        localStorage.removeItem('porcelain_token');
-        updateTokenUI();
-        updateDecryptableState();
+    if (usingFree) {
+      const res = await fetch('/api/free-decrypt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] })
+      });
+      data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Decryption failed');
+
+      freeDecryptsUsed++;
+      localStorage.setItem('porcelain_free_decrypts', freeDecryptsUsed);
+      const remaining = FREE_DECRYPT_LIMIT - freeDecryptsUsed;
+      if (remaining > 0) {
+        notify(`${remaining} free peek${remaining !== 1 ? 's' : ''} left`, 'info');
+      } else {
+        notify('no more free peeks. decrypt the sewer to keep reading.', 'info');
       }
-      throw new Error(data.error || 'Decryption failed');
+    } else {
+      const res = await fetch('/api/decrypt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: decryptToken, ids: [id] })
+      });
+      data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) {
+          decryptToken = null;
+          localStorage.removeItem('porcelain_token');
+          updateTokenUI();
+        }
+        throw new Error(data.error || 'Decryption failed');
+      }
+      decryptToken = data.token;
+      localStorage.setItem('porcelain_token', data.token);
+      updateTokenUI();
     }
-
-    decryptToken = data.token;
-    localStorage.setItem('porcelain_token', data.token);
-    updateTokenUI();
 
     if (data.ideas && data.ideas.length > 0) {
       const item = data.ideas[0];
       const cipher = entry.querySelector('.entry-cipher');
-      cipher.innerHTML = `<span class="entry-username">@${item.username}:</span> ${escapeHtml(item.idea)}`;
+      cipher.innerHTML = `
+        <span class="entry-username">@${item.username}:</span> ${escapeHtml(item.idea)}
+        <button class="share-filth-btn" onclick="openShareCard('@${item.username}', ${JSON.stringify(escapeHtml(item.idea)).replace(/'/g, "\\'")})">[SHARE THIS FILTH]</button>
+      `;
       entry.classList.remove('decryptable');
       entry.classList.add('decrypted');
       entry.onclick = null;
 
-      // Add reaction bar
       addReactionBar(entry, id);
     }
+
+    updateDecryptableState();
   } catch (err) {
     notify(err.message, 'error');
   }
@@ -1065,6 +1118,156 @@ async function pollForGraffitiToken(sessionId, attempts = 0) {
 }
 
 // ============================================================
+// SHARE CARD
+// ============================================================
+
+function openShareCard(username, idea) {
+  const canvas = shareCanvas;
+  const ctx = shareCtx;
+  const W = 600, H = 400;
+
+  // Dark sewer background
+  ctx.fillStyle = '#060a06';
+  ctx.fillRect(0, 0, W, H);
+
+  // Border glow
+  ctx.strokeStyle = '#2a6a2a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(8, 8, W - 16, H - 16);
+
+  // Scanline effect
+  ctx.fillStyle = 'rgba(74, 255, 74, 0.02)';
+  for (let y = 0; y < H; y += 4) {
+    ctx.fillRect(0, y, W, 2);
+  }
+
+  // Title
+  ctx.font = 'bold 18px monospace';
+  ctx.fillStyle = '#4aff4a';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(74, 255, 74, 0.5)';
+  ctx.shadowBlur = 10;
+  ctx.fillText('THE PORCELAIN PORTAL', W / 2, 50);
+  ctx.shadowBlur = 0;
+
+  // Divider
+  ctx.strokeStyle = '#1a3a1a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, 65);
+  ctx.lineTo(W - 40, 65);
+  ctx.stroke();
+
+  // Username
+  ctx.font = '14px monospace';
+  ctx.fillStyle = '#d4a44a';
+  ctx.textAlign = 'left';
+  ctx.fillText(username, 40, 95);
+
+  // Idea text (word wrap)
+  ctx.font = '16px monospace';
+  ctx.fillStyle = '#e0e0e0';
+  const words = idea.split(' ');
+  let line = '';
+  let y = 125;
+  const maxWidth = W - 80;
+
+  for (const word of words) {
+    const testLine = line + (line ? ' ' : '') + word;
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      ctx.fillText(line, 40, y);
+      line = word;
+      y += 24;
+      if (y > 310) {
+        ctx.fillText(line + '...', 40, y);
+        line = '';
+        break;
+      }
+    } else {
+      line = testLine;
+    }
+  }
+  if (line) ctx.fillText(line, 40, y);
+
+  // Footer
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#4a9a4a';
+  ctx.textAlign = 'center';
+  ctx.fillText('flushed anonymously into the sewer', W / 2, H - 40);
+  ctx.font = '10px monospace';
+  ctx.fillStyle = '#2a6a2a';
+  ctx.fillText('the porcelain portal - encrypted thoughts', W / 2, H - 20);
+
+  shareOverlay.style.display = 'flex';
+}
+
+document.getElementById('share-download-btn').addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = 'porcelain-portal-idea.png';
+  link.href = shareCanvas.toDataURL('image/png');
+  link.click();
+  notify('image saved!', 'success');
+});
+
+document.getElementById('share-copy-btn').addEventListener('click', async () => {
+  try {
+    const blob = await new Promise(resolve => shareCanvas.toBlob(resolve, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    notify('copied to clipboard!', 'success');
+  } catch {
+    notify('copy failed - try saving instead', 'error');
+  }
+});
+
+document.getElementById('share-close-btn').addEventListener('click', () => {
+  shareOverlay.style.display = 'none';
+});
+
+shareOverlay.addEventListener('click', (e) => {
+  if (e.target === shareOverlay) shareOverlay.style.display = 'none';
+});
+
+// ============================================================
+// TRENDING (BUBBLING UP)
+// ============================================================
+
+const EMOJI_DISPLAY = { poop: '\u{1F4A9}', fire: '\u{1F525}', brain: '\u{1F9E0}', puke: '\u{1F92E}' };
+
+async function loadTrending() {
+  try {
+    const res = await fetch('/api/trending');
+    const data = await res.json();
+
+    const section = document.getElementById('trending-section');
+    const list = document.getElementById('trending-list');
+
+    if (data.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    list.innerHTML = data.map((item, i) => {
+      const reactionsHtml = Object.entries(item.reactions)
+        .map(([key, count]) => `<span class="trending-reaction">${EMOJI_DISPLAY[key] || key} ${count}</span>`)
+        .join('');
+
+      return `
+        <div class="trending-item">
+          <span class="trending-rank">#${i + 1}</span>
+          <div class="trending-content">
+            <span class="trending-username">@${escapeHtml(item.username)}</span>
+            <span class="trending-idea">${escapeHtml(item.idea)}</span>
+            <div class="trending-reactions">${reactionsHtml}</div>
+          </div>
+          <button class="share-filth-btn" onclick="openShareCard('@${escapeHtml(item.username)}', '${escapeHtml(item.idea).replace(/'/g, "\\'")}')">[SHARE]</button>
+        </div>
+      `;
+    }).join('');
+  } catch { /* silent */ }
+}
+
+// ============================================================
 // MUTE TOGGLE
 // ============================================================
 
@@ -1115,8 +1318,9 @@ function startPolling() {
     } catch { /* silent */ }
   }, 10000);
 
-  // Stats polling
+  // Stats + trending polling
   setInterval(loadStats, 30000);
+  setInterval(loadTrending, 60000);
 }
 
 // ============================================================
@@ -1130,11 +1334,13 @@ document.addEventListener('keydown', () => SoundEngine.init(), { once: true });
 initUsername();
 updateMuteUI();
 updateScribbleUI();
+updateFreeDecryptUI();
 checkPaymentReturn();
 checkGraffitiPaymentReturn();
 updateTokenUI();
 loadStream();
 loadStats();
+loadTrending();
 loadGraffitiWall();
 startPolling();
 SewerAnimations.start();

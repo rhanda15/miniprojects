@@ -155,6 +155,11 @@
         <p class="stream-count" id="stream-count">0 ideas flushed into the void</p>
       </div>
 
+      <!-- FREE DECRYPTS INFO -->
+      <div class="free-decrypt-info" id="free-decrypt-info">
+        <span id="free-decrypt-count">5</span> free peeks left - click any idea to snoop
+      </div>
+
       <!-- DECRYPT BUTTON (beaten-up capsule below sewer) -->
       <div class="unlock-section">
         <button id="pay-btn" class="unlock-capsule">&#x1F9F9; DECRYPT THE SEWER - $1.99</button>
@@ -163,9 +168,28 @@
         </div>
       </div>
 
+      <!-- TRENDING SECTION -->
+      <div class="trending-section" id="trending-section" style="display:none;">
+        <h3 class="trending-title">BUBBLING UP FROM THE SEWER</h3>
+        <p class="trending-subtitle">today's most reacted filth</p>
+        <div class="trending-list" id="trending-list"></div>
+      </div>
+
       <footer class="footer">
         <p>ideas are encrypted with AES-256-GCM. nobody can read your filth. not even us. (unless you pay.)</p>
       </footer>
+    </div>
+  </div>
+
+  <!-- SHARE CARD OVERLAY -->
+  <div class="share-overlay" id="share-overlay" style="display:none;">
+    <div class="share-card-wrapper">
+      <canvas id="share-canvas" width="600" height="400"></canvas>
+      <div class="share-actions">
+        <button id="share-download-btn" class="share-action-btn">SAVE IMAGE</button>
+        <button id="share-copy-btn" class="share-action-btn">COPY IMAGE</button>
+        <button id="share-close-btn" class="share-close-btn">CLOSE</button>
+      </div>
     </div>
   </div>
 
