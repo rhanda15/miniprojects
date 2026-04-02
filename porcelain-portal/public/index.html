@@ -83,24 +83,18 @@
         </div>
       </div>
 
-      <!-- PAYWALL SECTION -->
-      <div class="paywall-section">
-        <div class="paywall-box" id="paywall-box">
-          <p class="paywall-title">PLUNGE THE DEPTHS</p>
-          <p class="paywall-desc">pay $1.99 to decrypt & read all flushed ideas</p>
-          <button id="pay-btn" class="pay-btn">UNLOCK ALL IDEAS - $1.99</button>
-          <div id="token-info" class="token-info" style="display:none;">
-            all ideas unlocked!
-            <br><small>click any idea in the stream to reveal it</small>
-          </div>
+      <!-- COMPACT ACTION BUTTONS -->
+      <div class="action-buttons">
+        <button id="pay-btn" class="action-btn pay-action">&#x1F513; UNLOCK ALL IDEAS - $1.99</button>
+        <div id="token-info" class="token-info" style="display:none;">
+          all ideas unlocked! click any idea below to reveal it
         </div>
+        <button id="graffiti-toggle-btn" class="action-btn graffiti-action">&#x270D;&#xFE0F; SCRIBBLE ON THE WALL - $0.99</button>
       </div>
-      <!-- GRAFFITI SECTION -->
-      <div class="graffiti-section">
-        <div class="graffiti-box">
-          <p class="graffiti-title">SCRIBBLE ON THE WALL</p>
-          <p class="graffiti-desc">leave your mark on the bathroom stall - $0.99</p>
 
+      <!-- GRAFFITI PANEL (hidden, expands on click) -->
+      <div class="graffiti-panel-wrapper" id="graffiti-panel-wrapper" style="display:none;">
+        <div class="graffiti-box">
           <div class="graffiti-tabs">
             <button class="graffiti-tab active" data-tab="draw">DRAW</button>
             <button class="graffiti-tab" data-tab="text">TEXT</button>
@@ -148,7 +142,7 @@
     </div>
   </div>
 
-  <!-- SEWER SECTION (dark background) -->
+  <!-- SEWER SECTION (right after toilet) -->
   <div class="sewer">
     <div class="container">
       <div class="stream-section">

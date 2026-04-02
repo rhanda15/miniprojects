@@ -6,7 +6,8 @@ const toilet = document.getElementById('toilet');
 const water = document.getElementById('water');
 const payBtn = document.getElementById('pay-btn');
 const tokenInfo = document.getElementById('token-info');
-const remainingCount = document.getElementById('remaining-count');
+const graffitiToggleBtn = document.getElementById('graffiti-toggle-btn');
+const graffitiPanelWrapper = document.getElementById('graffiti-panel-wrapper');
 const streamList = document.getElementById('stream-list');
 const streamCount = document.getElementById('stream-count');
 const usernameSection = document.getElementById('username-section');
@@ -333,7 +334,6 @@ function updateTokenUI() {
       return;
     }
 
-    remainingCount.textContent = remaining;
     tokenInfo.style.display = 'block';
     payBtn.style.display = 'none';
 
@@ -691,6 +691,15 @@ const SewerAnimations = {
 // ============================================================
 // GRAFFITI WALL
 // ============================================================
+
+// Toggle graffiti panel
+graffitiToggleBtn.addEventListener('click', () => {
+  const isVisible = graffitiPanelWrapper.style.display !== 'none';
+  graffitiPanelWrapper.style.display = isVisible ? 'none' : 'block';
+  graffitiToggleBtn.textContent = isVisible
+    ? '\u270D\uFE0F SCRIBBLE ON THE WALL - $0.99'
+    : '\u274C CLOSE SCRIBBLE PANEL';
+});
 
 const graffitiWall = document.getElementById('graffiti-wall');
 const graffitiCanvas = document.getElementById('graffiti-canvas');
