@@ -24,6 +24,8 @@ let currentUsername = localStorage.getItem('porcelain_username');
 let reactorId = localStorage.getItem('porcelain_reactor');
 let ideas = [];
 let isMuted = localStorage.getItem('porcelain_muted') === 'true';
+let freeScribblesUsed = parseInt(localStorage.getItem('porcelain_free_scribbles') || '0');
+const FREE_SCRIBBLE_LIMIT = 2;
 
 if (!reactorId) {
   reactorId = crypto.randomUUID();
@@ -270,7 +272,7 @@ payBtn.addEventListener('click', async () => {
     notify(err.message, 'error');
   } finally {
     payBtn.disabled = false;
-    payBtn.textContent = '\u{1F513} UNLOCK ALL IDEAS - $1.99';
+    payBtn.textContent = '\u{1F9F9} DECRYPT THE SEWER - $1.99';
   }
 });
 
@@ -692,12 +694,25 @@ const SewerAnimations = {
 // GRAFFITI WALL
 // ============================================================
 
+const scribblePriceLabel = document.getElementById('scribble-price-label');
+
+function updateScribbleUI() {
+  const freeRemaining = FREE_SCRIBBLE_LIMIT - freeScribblesUsed;
+  if (freeRemaining > 0) {
+    scribblePriceLabel.textContent = `${freeRemaining} FREE left`;
+    graffitiSubmitBtn.textContent = 'SCRIBBLE - FREE';
+  } else {
+    scribblePriceLabel.textContent = '$0.99';
+    graffitiSubmitBtn.textContent = 'SCRIBBLE - $0.99';
+  }
+}
+
 // Toggle graffiti panel
 graffitiToggleBtn.addEventListener('click', () => {
   const isVisible = graffitiPanelWrapper.style.display !== 'none';
   graffitiPanelWrapper.style.display = isVisible ? 'none' : 'block';
   graffitiToggleBtn.innerHTML = isVisible
-    ? 'SCRIBBLE ON<br>THE WALL<br><span class="scribble-price">$0.99</span>'
+    ? `SCRIBBLE ON<br>THE WALL<br><span class="scribble-price" id="scribble-price-label">${FREE_SCRIBBLE_LIMIT - freeScribblesUsed > 0 ? (FREE_SCRIBBLE_LIMIT - freeScribblesUsed) + ' FREE left' : '$0.99'}</span>`
     : '\u274C CLOSE';
 });
 
@@ -827,6 +842,25 @@ document.querySelectorAll('.size-btn').forEach(btn => {
 
 // Submit graffiti
 graffitiSubmitBtn.addEventListener('click', async () => {
+  const freeRemaining = FREE_SCRIBBLE_LIMIT - freeScribblesUsed;
+
+  // If free scribbles left, get a dev-style free token
+  if (freeRemaining > 0 && !graffitiToken) {
+    try {
+      const res = await fetch('/api/graffiti-free-token', { method: 'POST' });
+      const data = await res.json();
+      if (data.token) {
+        graffitiToken = data.token;
+        // Don't persist - it's a one-time use
+      }
+    } catch {
+      notify('Failed to get free scribble token', 'error');
+      return;
+    }
+    await submitGraffiti(true);
+    return;
+  }
+
   // Check if we have a valid token
   if (!graffitiToken) {
     await purchaseGraffiti();
@@ -849,7 +883,7 @@ graffitiSubmitBtn.addEventListener('click', async () => {
     return;
   }
 
-  await submitGraffiti();
+  await submitGraffiti(false);
 });
 
 async function purchaseGraffiti() {
@@ -876,11 +910,11 @@ async function purchaseGraffiti() {
     notify(err.message || 'Checkout failed', 'error');
   } finally {
     graffitiSubmitBtn.disabled = false;
-    graffitiSubmitBtn.textContent = 'SCRIBBLE - $0.99';
+    updateScribbleUI();
   }
 }
 
-async function submitGraffiti() {
+async function submitGraffiti(wasFree = false) {
   let type, data, color;
 
   if (graffitiMode === 'draw') {
@@ -935,9 +969,24 @@ async function submitGraffiti() {
       graffitiTextInput.value = '';
     }
 
-    // Invalidate token (one scribble per purchase)
+    // Track free scribble usage
+    if (wasFree) {
+      freeScribblesUsed++;
+      localStorage.setItem('porcelain_free_scribbles', freeScribblesUsed);
+      const remaining = FREE_SCRIBBLE_LIMIT - freeScribblesUsed;
+      if (remaining > 0) {
+        notify(`scribbled for free! ${remaining} free scribble${remaining !== 1 ? 's' : ''} left`, 'success');
+      } else {
+        notify('no more free scribbles. next one costs $0.99', 'info');
+      }
+    }
+
+    // Invalidate token (one scribble per purchase/free use)
     graffitiToken = null;
     localStorage.removeItem('porcelain_graffiti_token');
+
+    // Update UI
+    updateScribbleUI();
 
     // Reload wall
     loadGraffitiWall();
@@ -949,7 +998,7 @@ async function submitGraffiti() {
     }
   } finally {
     graffitiSubmitBtn.disabled = false;
-    graffitiSubmitBtn.textContent = 'SCRIBBLE - $0.99';
+    updateScribbleUI();
   }
 }
 
@@ -1080,6 +1129,7 @@ document.addEventListener('keydown', () => SoundEngine.init(), { once: true });
 
 initUsername();
 updateMuteUI();
+updateScribbleUI();
 checkPaymentReturn();
 checkGraffitiPaymentReturn();
 updateTokenUI();
