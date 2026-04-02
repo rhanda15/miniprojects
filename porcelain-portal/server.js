@@ -38,6 +38,20 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS graffiti (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL CHECK(type IN ('draw','text')),
+    data TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#2a2a2a',
+    x_pct REAL NOT NULL,
+    y_pct REAL NOT NULL,
+    rotation REAL NOT NULL DEFAULT 0,
+    username TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // --- Encryption ---
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
   ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
@@ -92,7 +106,7 @@ function checkRateLimit(ip) {
 
 // --- Middleware ---
 app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhook);
-app.use(express.json());
+app.use(express.json({ limit: '200kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Prepared Statements ---
@@ -108,6 +122,10 @@ const getReactionCounts = db.prepare(`
   WHERE idea_id IN (${Array(20).fill('?').join(',')})
   GROUP BY idea_id, emoji
 `);
+const insertGraffiti = db.prepare('INSERT INTO graffiti (type, data, color, x_pct, y_pct, rotation, username) VALUES (?, ?, ?, ?, ?, ?, ?)');
+const getAllGraffiti = db.prepare('SELECT id, type, data, color, x_pct, y_pct, rotation, username, created_at FROM graffiti ORDER BY id ASC');
+const graffitiTokens = new Map(); // sessionId -> true
+
 const getStatsTotal = db.prepare('SELECT COUNT(*) as total FROM ideas');
 const getStatsPeakHour = db.prepare(`
   SELECT strftime('%H', created_at) as hour, COUNT(*) as count
@@ -250,6 +268,104 @@ app.post('/api/react', (req, res) => {
   res.json({ counts });
 });
 
+// Get all graffiti
+app.get('/api/graffiti', (req, res) => {
+  const items = getAllGraffiti.all();
+  res.json(items);
+});
+
+// Add graffiti (requires graffiti token)
+app.post('/api/graffiti', (req, res) => {
+  const { token, type, data, color, x_pct, y_pct, rotation, username } = req.body;
+
+  // Verify graffiti token
+  if (!token) {
+    return res.status(401).json({ error: 'Payment required to scribble on the wall.' });
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(token, JWT_SECRET);
+    if (!payload.graffitiAccess) throw new Error('Not a graffiti token');
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired graffiti token.' });
+  }
+
+  if (!type || !data) {
+    return res.status(400).json({ error: 'Type and data required.' });
+  }
+
+  if (!['draw', 'text'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid type.' });
+  }
+
+  if (type === 'text' && data.length > 100) {
+    return res.status(400).json({ error: 'Text graffiti max 100 chars.' });
+  }
+
+  if (type === 'draw' && data.length > 50000) {
+    return res.status(400).json({ error: 'Drawing too large.' });
+  }
+
+  const safeColor = /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#2a2a2a';
+  const safeX = Math.max(0, Math.min(100, Number(x_pct) || Math.random() * 80 + 10));
+  const safeY = Math.max(0, Math.min(100, Number(y_pct) || Math.random() * 60 + 10));
+  const safeRotation = Math.max(-15, Math.min(15, Number(rotation) || (Math.random() * 10 - 5)));
+
+  try {
+    const result = insertGraffiti.run(type, data, safeColor, safeX, safeY, safeRotation, username || 'anon');
+    res.json({ ok: true, id: result.lastInsertRowid });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save graffiti.' });
+  }
+});
+
+// Graffiti checkout
+app.post('/api/graffiti-checkout', async (req, res) => {
+  if (!stripe) {
+    // Dev mode: give a free token
+    const token = jwt.sign({ graffitiAccess: true }, JWT_SECRET, { expiresIn: '1h' });
+    return res.json({ devToken: token });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: { name: 'Scribble on the Wall' },
+          unit_amount: 99,
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${req.protocol}://${req.get('host')}/?graffiti_session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.protocol}://${req.get('host')}/?cancelled=true`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Graffiti checkout error:', err.message);
+    res.status(500).json({ error: 'Failed to create checkout session.' });
+  }
+});
+
+// Check graffiti payment
+app.get('/api/check-graffiti-payment', (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
+
+  const hasToken = graffitiTokens.get(session_id);
+  if (hasToken) {
+    graffitiTokens.delete(session_id);
+    const token = jwt.sign({ graffitiAccess: true }, JWT_SECRET, { expiresIn: '1h' });
+    return res.json({ token });
+  }
+
+  res.json({ token: null });
+});
+
 // Create Stripe Checkout session
 app.post('/api/checkout', async (req, res) => {
   if (!stripe) {
@@ -290,12 +406,18 @@ async function handleWebhook(req, res) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const token = jwt.sign(
-      { decryptionsRemaining: 999999, sessionId: session.id },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-    paymentTokens.set(session.id, token);
+    const successUrl = session.success_url || '';
+
+    if (successUrl.includes('graffiti_session_id')) {
+      graffitiTokens.set(session.id, true);
+    } else {
+      const token = jwt.sign(
+        { decryptionsRemaining: 999999, sessionId: session.id },
+        JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+      paymentTokens.set(session.id, token);
+    }
   }
 
   res.json({ received: true });

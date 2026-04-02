@@ -20,6 +20,9 @@
     <div class="poster poster-2">IDEAS<br>WELCOME</div>
     <div class="poster poster-3">NO<br>REFUNDS</div>
 
+    <!-- Graffiti on the wall (loaded dynamically) -->
+    <div class="graffiti-wall" id="graffiti-wall"></div>
+
     <div class="container">
       <h1 class="title">THE PORCELAIN PORTAL</h1>
       <p class="subtitle">type whatever $hit aka thoughts you have in your mind, and flush it...</p>
@@ -92,6 +95,56 @@
           </div>
         </div>
       </div>
+      <!-- GRAFFITI SECTION -->
+      <div class="graffiti-section">
+        <div class="graffiti-box">
+          <p class="graffiti-title">SCRIBBLE ON THE WALL</p>
+          <p class="graffiti-desc">leave your mark on the bathroom stall - $0.99</p>
+
+          <div class="graffiti-tabs">
+            <button class="graffiti-tab active" data-tab="draw">DRAW</button>
+            <button class="graffiti-tab" data-tab="text">TEXT</button>
+          </div>
+
+          <!-- Draw mode -->
+          <div class="graffiti-panel" id="graffiti-draw-panel">
+            <canvas id="graffiti-canvas" width="280" height="180"></canvas>
+            <div class="graffiti-tools">
+              <div class="graffiti-colors">
+                <button class="color-btn active" data-color="#1a1a1a" style="background:#1a1a1a"></button>
+                <button class="color-btn" data-color="#cc2222" style="background:#cc2222"></button>
+                <button class="color-btn" data-color="#2255cc" style="background:#2255cc"></button>
+                <button class="color-btn" data-color="#22aa22" style="background:#22aa22"></button>
+                <button class="color-btn" data-color="#cc22cc" style="background:#cc22cc"></button>
+                <button class="color-btn" data-color="#e8e0d4" style="background:#e8e0d4; border-color:#999"></button>
+              </div>
+              <div class="graffiti-sizes">
+                <button class="size-btn active" data-size="3">&#x2022;</button>
+                <button class="size-btn" data-size="6">&#x25CF;</button>
+                <button class="size-btn" data-size="12">&#x2B24;</button>
+              </div>
+              <button id="graffiti-clear" class="graffiti-clear-btn">CLEAR</button>
+            </div>
+          </div>
+
+          <!-- Text mode -->
+          <div class="graffiti-panel" id="graffiti-text-panel" style="display:none;">
+            <input type="text" id="graffiti-text-input" placeholder="write on the wall..." maxlength="100" class="graffiti-text-field">
+            <div class="graffiti-tools">
+              <div class="graffiti-colors">
+                <button class="text-color-btn active" data-color="#1a1a1a" style="background:#1a1a1a"></button>
+                <button class="text-color-btn" data-color="#cc2222" style="background:#cc2222"></button>
+                <button class="text-color-btn" data-color="#2255cc" style="background:#2255cc"></button>
+                <button class="text-color-btn" data-color="#22aa22" style="background:#22aa22"></button>
+                <button class="text-color-btn" data-color="#cc22cc" style="background:#cc22cc"></button>
+              </div>
+            </div>
+          </div>
+
+          <button id="graffiti-submit-btn" class="graffiti-submit-btn">SCRIBBLE - $0.99</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
