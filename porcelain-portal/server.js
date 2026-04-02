@@ -291,7 +291,7 @@ async function handleWebhook(req, res) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const token = jwt.sign(
-      { decryptionsRemaining: 20, sessionId: session.id },
+      { decryptionsRemaining: 999999, sessionId: session.id },
       JWT_SECRET,
       { expiresIn: '1h' }
     );

@@ -265,7 +265,7 @@ payBtn.addEventListener('click', async () => {
     notify(err.message, 'error');
   } finally {
     payBtn.disabled = false;
-    payBtn.textContent = 'UNLOCK 20 IDEAS - $1.99';
+    payBtn.textContent = 'UNLOCK ALL IDEAS - $1.99';
   }
 });
 
