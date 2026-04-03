@@ -18404,10 +18404,6 @@
     "username": "narrator_voice"
   },
   {
-    "text": "my heating bill this winter was more than my rent. im moving to a cave",
-    "username": "cave_dweller"
-  },
-  {
     "text": "spring allergies hit and now i sneeze 47 times before noon daily",
     "username": "sneeze_machine"
   },
@@ -18806,6 +18802,10 @@
   {
     "text": "texted 'sounds good!' with an exclamation point so they know im not mad. am i mad? idk",
     "username": "punctuation_stress"
+  },
+  {
+    "text": "my phone has 47 apps sending notifications and i use maybe 6 of them",
+    "username": "app_hoarder"
   },
   {
     "text": "someone parked so close i had to climb in thru the passenger side again",
