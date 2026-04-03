@@ -229,7 +229,7 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Trending - most reacted ideas in last 24h (decrypted for display)
+// Trending - most reacted ideas in last 24h (encrypted, no free peeks)
 app.get('/api/trending', (req, res) => {
   const rows = getTrending.all();
 
@@ -245,59 +245,15 @@ app.get('/api/trending', (req, res) => {
     reactionMap[r.idea_id][r.emoji] = r.count;
   }
 
-  const trending = rows.map(row => {
-    let idea = '[encrypted]';
-    let username = 'anonymous';
-    try {
-      const plaintext = decrypt(row.ciphertext, row.iv, row.auth_tag);
-      try {
-        const parsed = JSON.parse(plaintext);
-        idea = parsed.idea;
-        username = parsed.username;
-      } catch {
-        idea = plaintext;
-      }
-    } catch { /* decryption failed */ }
-
-    return {
-      id: row.idea_id,
-      idea,
-      username,
-      reactions: reactionMap[row.idea_id] || {},
-      total_reactions: row.total_reactions,
-      created_at: row.created_at
-    };
-  });
+  const trending = rows.map(row => ({
+    id: row.idea_id,
+    ciphertext: row.ciphertext,
+    reactions: reactionMap[row.idea_id] || {},
+    total_reactions: row.total_reactions,
+    created_at: row.created_at
+  }));
 
   res.json(trending);
-});
-
-// Free decrypt (limited client-side, server just decrypts)
-app.post('/api/free-decrypt', (req, res) => {
-  const { ids } = req.body;
-
-  if (!ids || !Array.isArray(ids) || ids.length > 1) {
-    return res.status(400).json({ error: 'Provide exactly 1 id for free decrypt.' });
-  }
-
-  const paddedIds = [...ids.map(Number), ...Array(20 - ids.length).fill(-1)];
-  const rows = getIdeasByIds.all(...paddedIds);
-
-  const decrypted = rows.map(row => {
-    try {
-      const plaintext = decrypt(row.ciphertext, row.iv, row.auth_tag);
-      try {
-        const parsed = JSON.parse(plaintext);
-        return { id: row.id, idea: parsed.idea, username: parsed.username };
-      } catch {
-        return { id: row.id, idea: plaintext, username: 'anonymous' };
-      }
-    } catch {
-      return { id: row.id, idea: '[decryption failed]', username: 'unknown' };
-    }
-  });
-
-  res.json({ ideas: decrypted });
 });
 
 // Reactions - get counts
