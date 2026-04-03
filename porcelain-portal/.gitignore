@@ -3,3 +3,4 @@ node_modules/
 ideas.db
 ideas.db-shm
 ideas.db-wal
+seed-bank-*.json
