@@ -8341,7 +8341,7 @@
   },
   {
     "text": "my neighbor cooks at midnight and the whole floor smells like garlic",
-    "username": "midnight_fridge_terror"
+    "username": "midnight_garlic_neighbor"
   },
   {
     "text": "i put a pan in the dishwasher once and my mom called from 3 states away",
@@ -8385,7 +8385,7 @@
   },
   {
     "text": "my receipt from target was so long the cashier rolled her eyes printing it",
-    "username": "coupon_confusion"
+    "username": "target_scroll"
   },
   {
     "text": "the guy in 8A is doing a full skincare routine on the plane rn",
@@ -8397,7 +8397,7 @@
   },
   {
     "text": "the freezer ice buildup has its own ecosystem at this point",
-    "username": "midnight_fridge_terror"
+    "username": "freezer_archaeologist"
   },
   {
     "text": "my neighbor mows his lawn at 7am on saturdays and i have considered arson",
@@ -11893,7 +11893,7 @@
   },
   {
     "text": "returned shoes i wore to a wedding. sorry not sorry",
-    "username": "no_receipt_return"
+    "username": "wedding_shoe_returner"
   },
   {
     "text": "the shower is the only venue where im a grammy winner",
@@ -11961,7 +11961,7 @@
   },
   {
     "text": "had $300 in my cart then thought 'do i need this' and the answer was no but also yes",
-    "username": "online_cart_abandoner"
+    "username": "checkout_philosopher"
   },
   {
     "text": "told my toddler we're leaving the park in 5 min. that was 40 min ago",
@@ -11969,7 +11969,7 @@
   },
   {
     "text": "googled 'why is my eye red' at 2am. turns out i was just tired. from googling",
-    "username": "panic_googler"
+    "username": "red_eye_detective"
   },
   {
     "text": "returned a pillow because it was too soft. they asked no questions. legends",
@@ -11977,19 +11977,19 @@
   },
   {
     "text": "my shower concert got a standing ovation from the bathmat",
-    "username": "shower_singer"
+    "username": "bathmat_fan_club"
   },
   {
     "text": "cut the line at the deli once. got the wrong meat. i deserved it honestly",
-    "username": "queue_jumper_karma"
+    "username": "deli_karma_victim"
   },
   {
     "text": "spent 10 min finding the gas cap on the rental. its on the other side. always",
-    "username": "rental_car_anxiety"
+    "username": "gas_cap_guesser"
   },
   {
     "text": "being an adult is just being an unpaid intern for your own life",
-    "username": "unpaid_intern_of_life"
+    "username": "adulting_is_a_scam"
   },
   {
     "text": "folding laundry at midnight while watching true crime. peak adulting",
@@ -15600,7 +15600,803 @@
     "username": "slide_escort"
   },
   {
-    "text": "baby arrived before we picked a name. she was Baby Girl lastname for 3 days at the hospital",
-    "username": "unnamed_baby"
+    "text": "i spent 14 hours on elden ring yesterday and called in sick to work again lol",
+    "username": "hollowknight99"
+  },
+  {
+    "text": "ps5 is literally just a wifi router with better graphics fight me",
+    "username": "xboxdefender"
+  },
+  {
+    "text": "rage quit rocket league so hard i threw my controller into the ceiling fan",
+    "username": "bumpercar_bill"
+  },
+  {
+    "text": "spent $200 on genshin pulls and got nothing. im not even mad im just numb",
+    "username": "aboredwhale"
+  },
+  {
+    "text": "i swear i wasnt lagging bro the server just decided i should die",
+    "username": "pingvillain"
+  },
+  {
+    "text": "bought a $400 gaming chair and my back hurts worse than before",
+    "username": "lumbar_larry"
+  },
+  {
+    "text": "twitch chat is just 40000 people typing the same emote at the same time and calling it community",
+    "username": "lurker_liz"
+  },
+  {
+    "text": "i could definitely speedrun mario 64 in under 20 mins if i actually tried",
+    "username": "delusional_dan"
+  },
+  {
+    "text": "you havent really played zelda unless you played it on the original nes. sorry not sorry",
+    "username": "retro_rick"
+  },
+  {
+    "text": "i play candy crush on my lunch break and i will take this shame to my grave",
+    "username": "casual_karen"
+  },
+  {
+    "text": "my wife thinks i quit gaming but i just moved the ps5 to the garage",
+    "username": "garagegamer"
+  },
+  {
+    "text": "console wars are dumb but also xbox has no games lmaooo",
+    "username": "sonysimp88"
+  },
+  {
+    "text": "alt f4'd out of a ranked match and pretended my internet went out",
+    "username": "tactical_dc"
+  },
+  {
+    "text": "i have mass effect on 3 different platforms and havent finished it on any of them",
+    "username": "backlog_beth"
+  },
+  {
+    "text": "the lag wasnt even that bad i just have slow reflexes and cant admit it",
+    "username": "honestgamer"
+  },
+  {
+    "text": "my gaming chair makes me look like a failed esports dropout which is accurate",
+    "username": "chair_chad"
+  },
+  {
+    "text": "twitch chat during gdc is peak human devolution and i love it",
+    "username": "emote_emma"
+  },
+  {
+    "text": "i told everyone i speedrun celeste but really i just watched someone else do it",
+    "username": "fakespeedguy"
+  },
+  {
+    "text": "kids today will never know the pain of blowing into a cartridge",
+    "username": "dustlung_dave"
+  },
+  {
+    "text": "caught playing clash royale in a meeting. my manager plays too tho so were good",
+    "username": "cr_addict"
+  },
+  {
+    "text": "been playing the same save file of skyrim since 2011 and still havent beat it",
+    "username": "dragonpborn"
+  },
+  {
+    "text": "nintendo switch online is a scam but i keep paying for it every year like a fool",
+    "username": "switchsimp"
+  },
+  {
+    "text": "broke my monitor punching it during a warzone match. told my roommate it fell",
+    "username": "angryAndy"
+  },
+  {
+    "text": "dropped $80 on a fortnite skin for my kid and he doesnt even play anymore",
+    "username": "dadwallet"
+  },
+  {
+    "text": "i blame lag for everything even single player games",
+    "username": "lagcoping"
+  },
+  {
+    "text": "this secretlab chair was supposed to change my life. it changed my credit score",
+    "username": "financelord"
+  },
+  {
+    "text": "just chatting streams are just podcasts with worse audio change my mind",
+    "username": "stream_skeptic"
+  },
+  {
+    "text": "i practice speedrun strats in the shower. like mentally. its a problem",
+    "username": "showerrunner"
+  },
+  {
+    "text": "if you didnt play goldeneye on n64 your opinion on fps games is invalid",
+    "username": "boomer_brad"
+  },
+  {
+    "text": "im level 300 in a mobile idle game and i dont even enjoy it anymore",
+    "username": "tappedsoul"
+  },
+  {
+    "text": "my steam library has 400 games i play the same 3",
+    "username": "salegoblin"
+  },
+  {
+    "text": "pc master race is just guys who spent their rent money on a gpu",
+    "username": "consoleKing"
+  },
+  {
+    "text": "uninstalled league of legends for the 7th time this year. see you next week",
+    "username": "leagueloop"
+  },
+  {
+    "text": "the gacha got me bad. i set up parental controls on my own phone",
+    "username": "selfcontrol404"
+  },
+  {
+    "text": "everyone in my lobby had 10ms ping and i had 180. game was rigged from the start",
+    "username": "rural_wifi"
+  },
+  {
+    "text": "racing gaming chairs look so dumb but im typing this from one rn",
+    "username": "hypocrite_hank"
+  },
+  {
+    "text": "someone donated $500 to a streamer to say hi and got ignored lmao",
+    "username": "donoregret"
+  },
+  {
+    "text": "i timed my cereal pouring this morning. 4.2 seconds. new pb",
+    "username": "speedrun_brain"
+  },
+  {
+    "text": "you cant call yourself a gamer if you started after 2010 tbh",
+    "username": "gatekeep_gary"
+  },
+  {
+    "text": "my mom found out i play animal crossing and now she thinks im normal",
+    "username": "closet_fps"
+  },
+  {
+    "text": "i have played mass effect for 600 hrs and mass effect 2 for 0 hrs. help",
+    "username": "repeatrick"
+  },
+  {
+    "text": "playstation exclusives carry the entire console industry on their back",
+    "username": "ps_prophet"
+  },
+  {
+    "text": "smashed my headset after dying in dark souls. it was a $90 headset",
+    "username": "expensiveRage"
+  },
+  {
+    "text": "the battle pass is basically a second job except you pay them",
+    "username": "grindcore_gina"
+  },
+  {
+    "text": "my ping is fine the other guy is just using gaming socks or something",
+    "username": "copium_carl"
+  },
+  {
+    "text": "got the most expensive herman miller and still sit on the floor to game",
+    "username": "floorgang"
+  },
+  {
+    "text": "i only watch twitch for the drama recaps at this point. the games are whatever",
+    "username": "drama_diane"
+  },
+  {
+    "text": "been routing a speedrun of cooking dinner. wife is not impressed",
+    "username": "kitchen_run"
+  },
+  {
+    "text": "snes had better rpgs than anything made in the last decade and thats just facts",
+    "username": "16bit_tony"
+  },
+  {
+    "text": "i played wordle once and now i tell people im a mobile gamer",
+    "username": "wordlonce"
+  },
+  {
+    "text": "my kid asked why i was crying and i said allergies but it was a pokemon nuzlocke",
+    "username": "nuzlocke_dad"
+  },
+  {
+    "text": "xbox game pass is literally the best deal in gaming and i still complain about it",
+    "username": "gpgrumbler"
+  },
+  {
+    "text": "threw my switch at the wall during mario kart. rainbow road had it coming",
+    "username": "rainbowraged"
+  },
+  {
+    "text": "every mobile game is just a slot machine wearing a trenchcoat",
+    "username": "whalewatcher"
+  },
+  {
+    "text": "it wasnt lag it was packet loss which is basically the same thing but sounds smarter",
+    "username": "techlag_tim"
+  },
+  {
+    "text": "my razer gaming chair has rgb and i hate myself for loving it",
+    "username": "rgbshamee"
+  },
+  {
+    "text": "gifted 100 subs to a streamer who didnt even say my name right",
+    "username": "sub_simp"
+  },
+  {
+    "text": "i could beat any% hollow knight if the game wasnt so unfair",
+    "username": "excuserunner"
+  },
+  {
+    "text": "ppl who say graphics dont matter never played crysis on max settings in 2007",
+    "username": "crysis_craig"
+  },
+  {
+    "text": "i downloaded a mobile moba and now i play it more than my pc",
+    "username": "moba_shame"
+  },
+  {
+    "text": "told my therapist about my gaming hours and she actually gasped",
+    "username": "therapygamer"
+  },
+  {
+    "text": "the wii was peak gaming and none of you are ready for that conversation",
+    "username": "wii_warrior"
+  },
+  {
+    "text": "alt tabbed out of work to check my wow auction house. got 12 gold. worth it",
+    "username": "auctionAndy"
+  },
+  {
+    "text": "pay to win ruined gaming but also please dont nerf my purchased skin",
+    "username": "wallet_warrior"
+  },
+  {
+    "text": "my internet is fine for everything except the exact moment i need to clutch",
+    "username": "clutchlag"
+  },
+  {
+    "text": "the dxracer i bought in 2019 now sounds like a haunted rocking chair",
+    "username": "squeakyseat"
+  },
+  {
+    "text": "watching someone else play a game on twitch is basically the same as playing it right",
+    "username": "viewerAndy"
+  },
+  {
+    "text": "i reset my run 400 times today. my pb improved by 0.3 seconds. peak performance",
+    "username": "grindset_greg"
+  },
+  {
+    "text": "game boy color was the last good handheld. everything since then is just a phone",
+    "username": "gbcolor_guy"
+  },
+  {
+    "text": "i play raid shadow legends unironically. please dont tell anyone",
+    "username": "raid_regret"
+  },
+  {
+    "text": "my 4 year old beat me at smash bros and i havent been the same since",
+    "username": "smashdad"
+  },
+  {
+    "text": "steam deck is just a switch for people who wont admit nintendo is better",
+    "username": "deck_doubter"
+  },
+  {
+    "text": "quit mid game and told my team my house was on fire. it was not on fire",
+    "username": "liar_leo"
+  },
+  {
+    "text": "spent more on fifa points than on actual football tickets this year",
+    "username": "fut_fool"
+  },
+  {
+    "text": "144hz monitor but my eyes cant even tell the difference honestly",
+    "username": "placebo_pete"
+  },
+  {
+    "text": "bought a standing desk for gaming and i just lean on it like a goblin",
+    "username": "goblinposture"
+  },
+  {
+    "text": "the best content on twitch is when the stream crashes and chat loses it",
+    "username": "chaoschat"
+  },
+  {
+    "text": "i have a sub 2 hour mario odyssey time in my dreams and nowhere else",
+    "username": "dreamrunner"
+  },
+  {
+    "text": "atari was the golden age. you zoomers wouldnt survive pong for 5 minutes",
+    "username": "atari_al"
+  },
+  {
+    "text": "my screen time report said 11 hours of mobile games and i felt personally attacked",
+    "username": "screentime_sam"
+  },
+  {
+    "text": "havent touched grass since elden ring dlc dropped and im okay with that",
+    "username": "indoorIan"
+  },
+  {
+    "text": "every console is good actually. except stadia. stadia deserved what it got",
+    "username": "stadia_salt"
+  },
+  {
+    "text": "punched my desk so hard my drink spilled on my keyboard. $150 gone",
+    "username": "hydrodamage"
+  },
+  {
+    "text": "whale life chose me i didnt choose it. anyway heres my c6 character",
+    "username": "genshinwhale"
+  },
+  {
+    "text": "i swear the hitbox was off. replay clearly shows i missed but still",
+    "username": "copebox"
+  },
+  {
+    "text": "gaming chairs are just office chairs with a racing stripe tax",
+    "username": "chair_truther"
+  },
+  {
+    "text": "i follow 200 streamers and watch maybe 3 of them",
+    "username": "followhoarder"
+  },
+  {
+    "text": "just got a 2 frame improvement on my run. calling in sick tmrw to grind more",
+    "username": "framefreak"
+  },
+  {
+    "text": "mega man 2 is harder than any soulslike and i will die on this hill",
+    "username": "megaman_mike"
+  },
+  {
+    "text": "my coworker saw me playing cookie clicker and now i eat lunch alone",
+    "username": "clickershame"
+  },
+  {
+    "text": "sold my gaming pc and bought a ps5. less options more happiness honestly",
+    "username": "simplergamer"
+  },
+  {
+    "text": "i only play ranked when im tilted which explains my rank tbh",
+    "username": "tiltqueued"
+  },
+  {
+    "text": "every penny i spent on loot boxes was a mistake but the dopamine was real",
+    "username": "lootgoblin"
+  },
+  {
+    "text": "180ms ping is a lifestyle not a disadvantage. i have adapted",
+    "username": "highping_hero"
+  },
+  {
+    "text": "my noblechairs epic is peeling like a sunburn and i paid 500 for it",
+    "username": "peelingpete"
+  },
+  {
+    "text": "twitch predictions are just gambling with extra steps and i am addicted",
+    "username": "predictionpat"
+  },
+  {
+    "text": "i could get world record if i had a better controller. and better hands. and talent",
+    "username": "almostWR"
+  },
+  {
+    "text": "sega genesis does what nintendon't. yes i am 40 years old why do you ask",
+    "username": "blast_processing"
+  },
+  {
+    "text": "deleted candy crush 3 times this month. reinstalled it 3 times this month",
+    "username": "candycycle"
+  },
+  {
+    "text": "gaming is my only hobby and my only personality trait at this point",
+    "username": "onedimensional"
+  },
+  {
+    "text": "wore the same shirt to work 3 days in a row and nobody noticed until day 4 when karen from hr said something",
+    "username": "closet_gremlin"
+  },
+  {
+    "text": "bought a medium online and got something that would fit a literal toddler",
+    "username": "size_chart_liar"
+  },
+  {
+    "text": "my dryer ate my favorite hoodie and turned it into a crop top for a chihuahua",
+    "username": "shrunken_dreams"
+  },
+  {
+    "text": "spent 4 hours planning tomorrows outfit at 2am and then wore sweatpants anyway",
+    "username": "midnight_stylist"
+  },
+  {
+    "text": "fashion influencers be like 'this is my everyday look' wearing $3000 worth of clothes to get coffee",
+    "username": "broke_n_bitter"
+  },
+  {
+    "text": "found a gucci belt at goodwill for $2 and i dont even care if its fake i feel powerful",
+    "username": "thrift_queen99"
+  },
+  {
+    "text": "my shoe collection takes up more space than my actual living area and i regret nothing",
+    "username": "sole_collector"
+  },
+  {
+    "text": "dress code says business casual but my boss showed up in cargo shorts so whats the truth",
+    "username": "cubicle_rebel"
+  },
+  {
+    "text": "clearance rack at target is my therapy and my therapist cant judge me",
+    "username": "red_sticker_warrior"
+  },
+  {
+    "text": "someone at work noticed i wore this exact outfit last tuesday and i have never felt more attacked",
+    "username": "repeat_offender"
+  },
+  {
+    "text": "ordered a cute dress online and what arrived looked like a haunted pillowcase",
+    "username": "scammed_again"
+  },
+  {
+    "text": "my laundry shrank my only good pair of jeans and now theyre capris i guess",
+    "username": "accidental_capris"
+  },
+  {
+    "text": "thrift store find of the century: vintage leather jacket, $5, smells like 1987 but worth it",
+    "username": "bargain_hunter_xo"
+  },
+  {
+    "text": "planning outfits at 3am like im walking a runway when im actually going to walmart",
+    "username": "insomniac_vogue"
+  },
+  {
+    "text": "fashion influencer said this top was 'so flattering' it made me look like a stuffed sausage",
+    "username": "lied_to_me"
+  },
+  {
+    "text": "i own 47 pairs of shoes and still say i have nothing to wear",
+    "username": "shoe_hoarder"
+  },
+  {
+    "text": "wore my shirt inside out for half the day and honestly it looked better that way",
+    "username": "fashion_accident"
+  },
+  {
+    "text": "the clearance section at marshalls is where i become feral",
+    "username": "discount_feral"
+  },
+  {
+    "text": "coworker said 'didnt you wear that yesterday' yes and i'll wear it tomorrow too fight me",
+    "username": "outfit_repeater"
+  },
+  {
+    "text": "ordered a large and received something that could double as a tent for a family of four",
+    "username": "tent_wearer"
+  },
+  {
+    "text": "shrunk my cashmere sweater in the wash now my cat wears it and looks better than i did",
+    "username": "laundry_crimes"
+  },
+  {
+    "text": "2am me adding $400 of clothes to cart. 8am me wearing the same jeans from 2019",
+    "username": "late_night_shopper"
+  },
+  {
+    "text": "fashion bloggers saying 'affordable finds' and linking a $200 white tee shirt lol ok",
+    "username": "actually_broke"
+  },
+  {
+    "text": "the dress code at work is 'professional' but i show up in doc martens every single day",
+    "username": "punk_professional"
+  },
+  {
+    "text": "scored a ralph lauren blazer at salvation army for $3.50 and i wont shut up about it",
+    "username": "thrift_brag"
+  },
+  {
+    "text": "i have a dedicated chair in my room thats just for clothes im too lazy to hang up",
+    "username": "the_chair_pile"
+  },
+  {
+    "text": "ordered shoes in my size and they sent me clown shoes. not exaggerating theyre enormous",
+    "username": "wrong_size_wendy"
+  },
+  {
+    "text": "my white shirt turned pink in the wash and now i just tell people its fashion",
+    "username": "pink_accident"
+  },
+  {
+    "text": "someone complimented my outfit and i cant tell them its literally all from the dollar store",
+    "username": "secret_cheapskate"
+  },
+  {
+    "text": "wearing the same black leggings 5 days straight. different top tho so it counts as different",
+    "username": "leggings_life"
+  },
+  {
+    "text": "bought 6 shirts on clearance i dont need but they were 70% off so actually i saved money",
+    "username": "clearance_logic"
+  },
+  {
+    "text": "fashion influencer showed a 'capsule wardrobe' that costs more than my car",
+    "username": "capsule_scam"
+  },
+  {
+    "text": "my mom shrunk my favorite band tee and our relationship has never recovered",
+    "username": "rip_my_shirt"
+  },
+  {
+    "text": "its 2:47am and im reorganizing my entire closet by color instead of sleeping",
+    "username": "nocturnal_organizer"
+  },
+  {
+    "text": "the online pic showed a sleek blazer. what arrived looks like a trash bag with buttons",
+    "username": "expectation_vs_reality"
+  },
+  {
+    "text": "i rebel against business casual by wearing increasingly loud socks nobody can stop me",
+    "username": "sock_anarchist"
+  },
+  {
+    "text": "found a $400 jacket at the thrift store for $8 and it became my entire personality",
+    "username": "thrift_god"
+  },
+  {
+    "text": "my shoe closet needs its own zipcode at this point and im still buying more",
+    "username": "kicks_addict"
+  },
+  {
+    "text": "put on the same hoodie for the 11th day. its not dirty its seasoned",
+    "username": "hoodie_philosopher"
+  },
+  {
+    "text": "clearance rack energy is unmatched. saw two women almost fight over a $4 blouse today",
+    "username": "witnessed_it"
+  },
+  {
+    "text": "fashion youtuber said 'everyone needs this' its $89 for a plain white tank top no thanks",
+    "username": "not_falling_for_it"
+  },
+  {
+    "text": "accidentally wore two different shoes to work and just owned it like it was intentional",
+    "username": "mismatched_king"
+  },
+  {
+    "text": "my dryer has personally victimized every good piece of clothing i own",
+    "username": "dryer_victim"
+  },
+  {
+    "text": "planning a weeks worth of outfits at 1am then wearing outfit #1 all five days",
+    "username": "planning_fallacy"
+  },
+  {
+    "text": "ordered a size 10 shoe and got a size 10 for ants apparently",
+    "username": "shoe_sizing_scam"
+  },
+  {
+    "text": "the thrift store near campus has better stuff than the mall and im not even joking",
+    "username": "thrift_convert"
+  },
+  {
+    "text": "wore a hawaiian shirt to the office on monday to assert dominance over dress code",
+    "username": "aloha_rebellion"
+  },
+  {
+    "text": "my closet is 90% black clothes and i still spend 30 min deciding what to wear",
+    "username": "all_black_everything"
+  },
+  {
+    "text": "influencer said these jeans were 'true to size' i cant breathe in them",
+    "username": "jeans_liar"
+  },
+  {
+    "text": "found brand new nikes at goodwill for $6 and i peaked in life that day",
+    "username": "thrift_score"
+  },
+  {
+    "text": "someone photographed my outfit for a 'what not to wear' blog and honestly fair",
+    "username": "fashion_disaster_ok"
+  },
+  {
+    "text": "shrunk my work pants and had to safety pin them shut for an entire shift",
+    "username": "safety_pin_save"
+  },
+  {
+    "text": "its 3am and im on shein adding things to my cart that will look nothing like the photo",
+    "username": "3am_bad_decisions"
+  },
+  {
+    "text": "dress code says no jeans but my manager wears jeans every friday make it make sense",
+    "username": "rules_for_thee"
+  },
+  {
+    "text": "i have enough shoes to wear a different pair every day for 2 months help",
+    "username": "shoe_intervention"
+  },
+  {
+    "text": "bought a coat on clearance in july because it was $12 and im a visionary",
+    "username": "strategic_shopper"
+  },
+  {
+    "text": "that influencer 'haul' video made me buy 8 things and i looked good in exactly zero",
+    "username": "haul_victim"
+  },
+  {
+    "text": "wore my shirt backwards all day and three people complimented it so whos really wrong here",
+    "username": "backwards_flex"
+  },
+  {
+    "text": "the washing machine ate one sock again. i have 23 single socks now. starting a museum",
+    "username": "sock_graveyard"
+  },
+  {
+    "text": "thrift store changing rooms have seen me at my most vulnerable and most victorious",
+    "username": "fitting_room_warrior"
+  },
+  {
+    "text": "online order said 'vintage blue' it arrived looking like a sad grey dishrag",
+    "username": "color_catfish"
+  },
+  {
+    "text": "my coworkers think i have a huge wardrobe but its actually just 5 outfits on rotation",
+    "username": "rotation_master"
+  },
+  {
+    "text": "bought heels on sale that are a half size too small. i will simply not feel pain",
+    "username": "pain_is_fashion"
+  },
+  {
+    "text": "its 2am and im pinning outfit ideas on pinterest for a life i absolutely do not live",
+    "username": "pinterest_delulu"
+  },
+  {
+    "text": "fashion disaster: tucked my skirt into my tights and walked through the whole office",
+    "username": "tuck_incident"
+  },
+  {
+    "text": "clearance section is my love language and i wont apologize for it",
+    "username": "sale_soulmate"
+  },
+  {
+    "text": "influencers really out here pretending they bought that designer bag and didnt get it free",
+    "username": "ad_detector"
+  },
+  {
+    "text": "the dryer turned my normal shirt into something only a very buff baby could wear",
+    "username": "buff_baby_shirt"
+  },
+  {
+    "text": "someone asked if my outfit was 'vintage inspired' no babe its just old",
+    "username": "just_old_clothes"
+  },
+  {
+    "text": "ordered an xs and could fit three of me in it. sizing is a social construct at this point",
+    "username": "sizing_is_fake"
+  },
+  {
+    "text": "snuck into work wearing sneakers under my dress pants. nobody looks at feet right",
+    "username": "stealth_sneakers"
+  },
+  {
+    "text": "found a cashmere scarf at the bins for 50 cents and i bring it up in every conversation",
+    "username": "bins_champion"
+  },
+  {
+    "text": "my 2am outfit planning sessions are more productive than anything i do during the day",
+    "username": "night_planner"
+  },
+  {
+    "text": "wore the same dress to 3 different weddings this year. different accessories tho so its fine",
+    "username": "wedding_recycler"
+  },
+  {
+    "text": "fashion influencer said white after labor day is fine now and my grandma is NOT having it",
+    "username": "grandma_disagrees"
+  },
+  {
+    "text": "i keep buying running shoes but the only thing i run from is my problems",
+    "username": "fake_runner"
+  },
+  {
+    "text": "clearance rack gave me trust issues. bought a 'great deal' that fell apart after one wash",
+    "username": "cheap_regret"
+  },
+  {
+    "text": "wore pajama pants to target and saw my boss there. we made eye contact. nobody spoke",
+    "username": "pj_encounter"
+  },
+  {
+    "text": "the thrift gods blessed me with a perfect vintage denim jacket today i could cry",
+    "username": "denim_blessed"
+  },
+  {
+    "text": "every fashion guru says invest in basics but my basics cost more than my rent now",
+    "username": "basic_bankruptcy"
+  },
+  {
+    "text": "shrunk my roommates sweater and replaced it with a thrift store one. she hasnt noticed yet",
+    "username": "sweater_criminal"
+  },
+  {
+    "text": "got dress coded at work for wearing a band tee. its metallica not a crime janet",
+    "username": "metallica_dress_code"
+  },
+  {
+    "text": "online shopping at 4am is a dangerous sport and i am an extreme athlete",
+    "username": "4am_athlete"
+  },
+  {
+    "text": "my shoe rack collapsed under the weight of my collection and i took it as a sign to buy another rack",
+    "username": "rack_collapse"
+  },
+  {
+    "text": "someone told me my outfit was 'brave' and i still dont know if it was a compliment",
+    "username": "bravely_dressed"
+  },
+  {
+    "text": "found a pristine north face at the thrift for $4 and nobody can ruin this day for me",
+    "username": "north_face_deal"
+  },
+  {
+    "text": "fashion influencer did a 'dupe' video and the dupes were still $60 each lmao",
+    "username": "dupe_skeptic"
+  },
+  {
+    "text": "wore mismatched socks on purpose and started a trend in my office. leadership material",
+    "username": "trendsetter_maybe"
+  },
+  {
+    "text": "the shrinkage from one hot wash turned my sweater into a very fashionable belly shirt",
+    "username": "hot_wash_mistake"
+  },
+  {
+    "text": "spent 45 min on an outfit for a zoom call where only my face showed",
+    "username": "zoom_fashion"
+  },
+  {
+    "text": "clearance shopping is a competitive sport and i am an olympian",
+    "username": "gold_medal_shopper"
+  },
+  {
+    "text": "ordered 'army green' pants online. they are bright lime. in what army",
+    "username": "lime_army"
+  },
+  {
+    "text": "my fashion sense peaked in 2014 and ive been chasing that high ever since",
+    "username": "peak_2014"
+  },
+  {
+    "text": "thrift store employees know me by name now and honestly thats fine",
+    "username": "regular_thrifter"
+  },
+  {
+    "text": "rebelling against smart casual by wearing the dumbest casual i can find",
+    "username": "dumb_casual"
+  },
+  {
+    "text": "woke up at 2am thinking about whether stripes and plaid can coexist. the answer is no",
+    "username": "pattern_crisis"
+  },
+  {
+    "text": "the lie that influencers wear those heels all day is the biggest scam of our generation",
+    "username": "heel_truther"
+  },
+  {
+    "text": "bought shoes that were too small because they were the last pair and i have faith in stretching",
+    "username": "optimistic_feet"
+  },
+  {
+    "text": "my laundry pile has achieved sentience and is now choosing outfits for me",
+    "username": "laundry_monster"
+  },
+  {
+    "text": "wearing my stained hoodie inside out is not lazy its called problem solving",
+    "username": "problem_solver"
   }
 ]
