@@ -87,7 +87,7 @@
 
       <!-- SCRIBBLE BUTTON (taped to the wall) -->
       <div class="scribble-poster-wrapper">
-        <button id="graffiti-toggle-btn" class="scribble-poster">SCRIBBLE ON<br>THE WALL<br><span class="scribble-price" id="scribble-price-label">2 FREE then $0.99</span></button>
+        <button id="graffiti-toggle-btn" class="scribble-poster">SCRIBBLE ON<br>THE WALL<br><span class="scribble-price">FREE</span></button>
       </div>
 
       <!-- GRAFFITI PANEL (hidden, expands on click) -->
@@ -133,10 +133,18 @@
             </div>
           </div>
 
-          <button id="graffiti-submit-btn" class="graffiti-submit-btn">SCRIBBLE - FREE</button>
+          <button id="graffiti-submit-btn" class="graffiti-submit-btn">SCRIBBLE</button>
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- DECRYPT GATEWAY (between flush and sewer) -->
+  <div class="unlock-section gateway">
+    <button id="pay-btn" class="unlock-capsule">&#x1F9F9; DECRYPT THE SEWER - $0.99</button>
+    <div id="token-info" class="token-info" style="display:none;">
+      sewer decrypted! click any idea to expose it
     </div>
   </div>
 
@@ -153,19 +161,6 @@
           <div class="stream-fade-bottom"></div>
         </div>
         <p class="stream-count" id="stream-count">0 ideas flushed into the void</p>
-      </div>
-
-      <!-- FREE DECRYPTS INFO -->
-      <div class="free-decrypt-info" id="free-decrypt-info">
-        <span id="free-decrypt-count">5</span> free peeks left - click any idea to snoop
-      </div>
-
-      <!-- DECRYPT BUTTON (beaten-up capsule below sewer) -->
-      <div class="unlock-section">
-        <button id="pay-btn" class="unlock-capsule">&#x1F9F9; DECRYPT THE SEWER - $1.99</button>
-        <div id="token-info" class="token-info" style="display:none;">
-          sewer decrypted! click any idea above to expose it
-        </div>
       </div>
 
       <!-- TRENDING SECTION -->

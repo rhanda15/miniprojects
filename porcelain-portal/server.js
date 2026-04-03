@@ -124,7 +124,6 @@ const getReactionCounts = db.prepare(`
 `);
 const insertGraffiti = db.prepare('INSERT INTO graffiti (type, data, color, x_pct, y_pct, rotation, username) VALUES (?, ?, ?, ?, ?, ?, ?)');
 const getAllGraffiti = db.prepare('SELECT id, type, data, color, x_pct, y_pct, rotation, username, created_at FROM graffiti ORDER BY id ASC');
-const graffitiTokens = new Map(); // sessionId -> true
 
 const getStatsTotal = db.prepare('SELECT COUNT(*) as total FROM ideas');
 const getStatsPeakHour = db.prepare(`
@@ -230,7 +229,7 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Trending - most reacted ideas in last 24h (decrypted for display)
+// Trending - most reacted ideas in last 24h (encrypted, no free peeks)
 app.get('/api/trending', (req, res) => {
   const rows = getTrending.all();
 
@@ -246,59 +245,15 @@ app.get('/api/trending', (req, res) => {
     reactionMap[r.idea_id][r.emoji] = r.count;
   }
 
-  const trending = rows.map(row => {
-    let idea = '[encrypted]';
-    let username = 'anonymous';
-    try {
-      const plaintext = decrypt(row.ciphertext, row.iv, row.auth_tag);
-      try {
-        const parsed = JSON.parse(plaintext);
-        idea = parsed.idea;
-        username = parsed.username;
-      } catch {
-        idea = plaintext;
-      }
-    } catch { /* decryption failed */ }
-
-    return {
-      id: row.idea_id,
-      idea,
-      username,
-      reactions: reactionMap[row.idea_id] || {},
-      total_reactions: row.total_reactions,
-      created_at: row.created_at
-    };
-  });
+  const trending = rows.map(row => ({
+    id: row.idea_id,
+    ciphertext: row.ciphertext,
+    reactions: reactionMap[row.idea_id] || {},
+    total_reactions: row.total_reactions,
+    created_at: row.created_at
+  }));
 
   res.json(trending);
-});
-
-// Free decrypt (limited client-side, server just decrypts)
-app.post('/api/free-decrypt', (req, res) => {
-  const { ids } = req.body;
-
-  if (!ids || !Array.isArray(ids) || ids.length > 1) {
-    return res.status(400).json({ error: 'Provide exactly 1 id for free decrypt.' });
-  }
-
-  const paddedIds = [...ids.map(Number), ...Array(20 - ids.length).fill(-1)];
-  const rows = getIdeasByIds.all(...paddedIds);
-
-  const decrypted = rows.map(row => {
-    try {
-      const plaintext = decrypt(row.ciphertext, row.iv, row.auth_tag);
-      try {
-        const parsed = JSON.parse(plaintext);
-        return { id: row.id, idea: parsed.idea, username: parsed.username };
-      } catch {
-        return { id: row.id, idea: plaintext, username: 'anonymous' };
-      }
-    } catch {
-      return { id: row.id, idea: '[decryption failed]', username: 'unknown' };
-    }
-  });
-
-  res.json({ ideas: decrypted });
 });
 
 // Reactions - get counts
@@ -355,22 +310,14 @@ app.get('/api/graffiti', (req, res) => {
   res.json(items);
 });
 
-// Add graffiti (requires graffiti token)
+// Add graffiti (free for everyone)
 app.post('/api/graffiti', (req, res) => {
-  const { token, type, data, color, x_pct, y_pct, rotation, username } = req.body;
-
-  // Verify graffiti token
-  if (!token) {
-    return res.status(401).json({ error: 'Payment required to scribble on the wall.' });
+  const ip = req.ip;
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many scribbles! Wait a minute.' });
   }
 
-  let payload;
-  try {
-    payload = jwt.verify(token, JWT_SECRET);
-    if (!payload.graffitiAccess) throw new Error('Not a graffiti token');
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired graffiti token.' });
-  }
+  const { type, data, color, x_pct, y_pct, rotation, username } = req.body;
 
   if (!type || !data) {
     return res.status(400).json({ error: 'Type and data required.' });
@@ -399,58 +346,6 @@ app.post('/api/graffiti', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to save graffiti.' });
   }
-});
-
-// Free graffiti token (client tracks the 2 free limit)
-app.post('/api/graffiti-free-token', (req, res) => {
-  const token = jwt.sign({ graffitiAccess: true }, JWT_SECRET, { expiresIn: '10m' });
-  res.json({ token });
-});
-
-// Graffiti checkout
-app.post('/api/graffiti-checkout', async (req, res) => {
-  if (!stripe) {
-    // Dev mode: give a free token
-    const token = jwt.sign({ graffitiAccess: true }, JWT_SECRET, { expiresIn: '1h' });
-    return res.json({ devToken: token });
-  }
-
-  try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: { name: 'Scribble on the Wall' },
-          unit_amount: 99,
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      success_url: `${req.protocol}://${req.get('host')}/?graffiti_session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.protocol}://${req.get('host')}/?cancelled=true`,
-    });
-
-    res.json({ url: session.url });
-  } catch (err) {
-    console.error('Graffiti checkout error:', err.message);
-    res.status(500).json({ error: 'Failed to create checkout session.' });
-  }
-});
-
-// Check graffiti payment
-app.get('/api/check-graffiti-payment', (req, res) => {
-  const { session_id } = req.query;
-  if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
-
-  const hasToken = graffitiTokens.get(session_id);
-  if (hasToken) {
-    graffitiTokens.delete(session_id);
-    const token = jwt.sign({ graffitiAccess: true }, JWT_SECRET, { expiresIn: '1h' });
-    return res.json({ token });
-  }
-
-  res.json({ token: null });
 });
 
 // Create Stripe Checkout session
@@ -493,18 +388,12 @@ async function handleWebhook(req, res) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    const successUrl = session.success_url || '';
-
-    if (successUrl.includes('graffiti_session_id')) {
-      graffitiTokens.set(session.id, true);
-    } else {
-      const token = jwt.sign(
-        { decryptionsRemaining: 999999, sessionId: session.id },
-        JWT_SECRET,
-        { expiresIn: '1h' }
-      );
-      paymentTokens.set(session.id, token);
-    }
+    const token = jwt.sign(
+      { decryptionsRemaining: 999999, sessionId: session.id },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    paymentTokens.set(session.id, token);
   }
 
   res.json({ received: true });
