@@ -20,9 +20,6 @@
     <div class="poster poster-2">BAD IDEAS<br>ONLY</div>
     <div class="poster poster-3">YOUR BOSS<br>IS WRONG</div>
 
-    <!-- Graffiti on the wall (loaded dynamically) -->
-    <div class="graffiti-wall" id="graffiti-wall"></div>
-
     <div class="container">
       <h1 class="title">THE PORCELAIN PORTAL</h1>
       <p class="subtitle">dump your unhinged thoughts, confessions & dumb takes... then flush the evidence</p>
@@ -133,11 +130,20 @@
             </div>
           </div>
 
-          <button id="graffiti-submit-btn" class="graffiti-submit-btn">SCRIBBLE</button>
+          <div class="graffiti-submit-row">
+            <button id="graffiti-shuffle-btn" class="graffiti-shuffle-btn" title="Shuffle position">SHUFFLE SPOT</button>
+            <button id="graffiti-submit-btn" class="graffiti-submit-btn">SCRIBBLE</button>
+          </div>
         </div>
       </div>
 
     </div>
+  </div>
+
+  <!-- THE WALL (graffiti section) -->
+  <div class="graffiti-wall-section">
+    <div class="graffiti-wall" id="graffiti-wall"></div>
+    <div class="graffiti-preview" id="graffiti-preview" style="display:none;"></div>
   </div>
 
   <!-- DECRYPT GATEWAY (between flush and sewer) -->

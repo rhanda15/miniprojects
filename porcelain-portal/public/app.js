@@ -494,9 +494,10 @@ async function loadStats() {
     document.getElementById('stat-today').textContent = data.last24h;
 
     if (data.peakHour !== null) {
-      const h = data.peakHour;
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      const hour12 = h % 12 || 12;
+      // Convert UTC hour to local timezone
+      const localHour = (data.peakHour + Math.round(new Date().getTimezoneOffset() / -60) + 24) % 24;
+      const ampm = localHour >= 12 ? 'PM' : 'AM';
+      const hour12 = localHour % 12 || 12;
       document.getElementById('stat-peak').textContent = hour12 + ampm;
     } else {
       document.getElementById('stat-peak').textContent = '--';
@@ -781,6 +782,11 @@ graffitiToggleBtn.addEventListener('click', () => {
   graffitiToggleBtn.innerHTML = isVisible
     ? 'SCRIBBLE ON<br>THE WALL<br><span class="scribble-price">FREE</span>'
     : '\u274C CLOSE';
+  if (!isVisible) {
+    shufflePreviewPos();
+  } else {
+    graffitiPreview.style.display = 'none';
+  }
 });
 
 const graffitiWall = document.getElementById('graffiti-wall');
@@ -789,6 +795,8 @@ const graffitiCtx = graffitiCanvas.getContext('2d');
 const graffitiSubmitBtn = document.getElementById('graffiti-submit-btn');
 const graffitiTextInput = document.getElementById('graffiti-text-input');
 const graffitiClearBtn = document.getElementById('graffiti-clear');
+const graffitiShuffleBtn = document.getElementById('graffiti-shuffle-btn');
+const graffitiPreview = document.getElementById('graffiti-preview');
 let graffitiMode = 'draw';
 let graffitiColor = '#1a1a1a';
 let graffitiTextColor = '#1a1a1a';
@@ -796,6 +804,34 @@ let graffitiSize = 3;
 let isDrawing = false;
 let lastX = 0, lastY = 0;
 let hasDrawn = false;
+let previewPos = { x: Math.random() * 70 + 15, y: Math.random() * 50 + 10, rotation: Math.random() * 12 - 6 };
+
+function shufflePreviewPos() {
+  previewPos = { x: Math.random() * 70 + 15, y: Math.random() * 50 + 10, rotation: Math.random() * 12 - 6 };
+  updateGraffitiPreview();
+}
+
+function updateGraffitiPreview() {
+  if (graffitiPanelWrapper.style.display === 'none') {
+    graffitiPreview.style.display = 'none';
+    return;
+  }
+  graffitiPreview.style.display = 'block';
+  graffitiPreview.style.left = previewPos.x + '%';
+  graffitiPreview.style.top = previewPos.y + '%';
+  graffitiPreview.style.transform = `rotate(${previewPos.rotation}deg)`;
+
+  if (graffitiMode === 'text') {
+    const text = graffitiTextInput.value.trim() || 'your text here...';
+    graffitiPreview.textContent = text;
+    graffitiPreview.style.color = graffitiTextColor;
+  } else {
+    graffitiPreview.textContent = '[your drawing]';
+    graffitiPreview.style.color = '#666';
+  }
+}
+
+graffitiShuffleBtn.addEventListener('click', shufflePreviewPos);
 
 // Canvas drawing
 graffitiCanvas.addEventListener('mousedown', (e) => {
@@ -876,6 +912,7 @@ document.querySelectorAll('.graffiti-tab').forEach(tab => {
     graffitiMode = tab.dataset.tab;
     document.getElementById('graffiti-draw-panel').style.display = graffitiMode === 'draw' ? '' : 'none';
     document.getElementById('graffiti-text-panel').style.display = graffitiMode === 'text' ? '' : 'none';
+    updateGraffitiPreview();
   });
 });
 
@@ -894,8 +931,12 @@ document.querySelectorAll('.text-color-btn').forEach(btn => {
     document.querySelectorAll('.text-color-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     graffitiTextColor = btn.dataset.color;
+    updateGraffitiPreview();
   });
 });
+
+// Live preview on text input
+graffitiTextInput.addEventListener('input', updateGraffitiPreview);
 
 // Size selection
 document.querySelectorAll('.size-btn').forEach(btn => {
@@ -942,9 +983,9 @@ async function submitGraffiti() {
         type,
         data,
         color,
-        x_pct: Math.random() * 70 + 15,
-        y_pct: Math.random() * 50 + 10,
-        rotation: Math.random() * 12 - 6,
+        x_pct: previewPos.x,
+        y_pct: previewPos.y,
+        rotation: previewPos.rotation,
         username: currentUsername || 'anon'
       })
     });
@@ -954,6 +995,7 @@ async function submitGraffiti() {
 
     notify('scribbled on the wall!', 'success');
     SoundEngine.playPlop();
+    graffitiPreview.style.display = 'none';
 
     // Clear after submit
     if (graffitiMode === 'draw') {
