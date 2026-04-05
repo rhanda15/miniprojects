@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 const Stripe = require('stripe');
@@ -9,9 +10,27 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- Environment Variable Enforcement ---
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.ENCRYPTION_KEY) {
+    console.error('FATAL: ENCRYPTION_KEY must be set in production.');
+    console.error('Generate one: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    process.exit(1);
+  }
+  if (!process.env.JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET must be set in production.');
+    process.exit(1);
+  }
+}
+
 // --- Database Setup ---
-const db = new Database(path.join(__dirname, 'ideas.db'));
+const DB_PATH = path.join(__dirname, 'ideas.db');
+const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
+
+// Restrict DB file permissions (owner read/write only)
+try { fs.chmodSync(DB_PATH, 0o600); } catch { /* may fail on some platforms */ }
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS ideas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +71,15 @@ db.exec(`
   )
 `);
 
+// Payment tokens table (persisted across restarts)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS payment_tokens (
+    session_id TEXT PRIMARY KEY,
+    token TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 // --- Encryption ---
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
   ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
@@ -85,7 +113,12 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
-const paymentTokens = new Map();
+
+// Payment token DB operations
+const insertPaymentToken = db.prepare('INSERT OR REPLACE INTO payment_tokens (session_id, token) VALUES (?, ?)');
+const getPaymentToken = db.prepare('SELECT token FROM payment_tokens WHERE session_id = ?');
+const deletePaymentToken = db.prepare('DELETE FROM payment_tokens WHERE session_id = ?');
+const cleanExpiredTokens = db.prepare("DELETE FROM payment_tokens WHERE created_at < datetime('now', '-2 hours')");
 
 // --- Rate Limiting ---
 const rateLimits = new Map();
@@ -104,9 +137,47 @@ function checkRateLimit(ip) {
   return true;
 }
 
+// Clean up stale rate limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimits) {
+    if (now > entry.resetTime) rateLimits.delete(ip);
+  }
+  // Also clean expired payment tokens
+  cleanExpiredTokens.run();
+}, 300000);
+
 // --- Middleware ---
+// Trust proxy (required for correct req.ip behind Railway/nginx/etc.)
+app.set('trust proxy', 1);
+
+// Stripe webhook must come before JSON body parser
 app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 app.use(express.json({ limit: '200kb' }));
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self' https://api.stripe.com https://checkout.stripe.com",
+    "frame-src https://checkout.stripe.com",
+    "base-uri 'self'",
+    "form-action 'self'"
+  ].join('; '));
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Prepared Statements ---
@@ -393,7 +464,7 @@ async function handleWebhook(req, res) {
       JWT_SECRET,
       { expiresIn: '1h' }
     );
-    paymentTokens.set(session.id, token);
+    insertPaymentToken.run(session.id, token);
   }
 
   res.json({ received: true });
@@ -404,10 +475,10 @@ app.get('/api/check-payment', (req, res) => {
   const { session_id } = req.query;
   if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
 
-  const token = paymentTokens.get(session_id);
-  if (token) {
-    paymentTokens.delete(session_id);
-    return res.json({ token });
+  const row = getPaymentToken.get(session_id);
+  if (row) {
+    deletePaymentToken.run(session_id);
+    return res.json({ token: row.token });
   }
 
   res.json({ token: null });
