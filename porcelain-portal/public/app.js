@@ -398,7 +398,7 @@ async function decryptEntry(entry) {
       const cipher = entry.querySelector('.entry-cipher');
       cipher.innerHTML = `
         <span class="entry-username">@${item.username}:</span> ${escapeHtml(item.idea)}
-        <button class="share-filth-btn" onclick="openShareCard('@${item.username}', ${JSON.stringify(escapeHtml(item.idea)).replace(/'/g, "\\'")})">[SHARE THIS FILTH]</button>
+        <button class="share-filth-btn" onclick="openShareCard('@${escapeHtml(item.username)}', ${JSON.stringify(escapeHtml(item.idea)).replace(/'/g, "\\'")})">[SHARE THIS FILTH]</button>
       `;
       entry.classList.remove('decryptable');
       entry.classList.add('decrypted');

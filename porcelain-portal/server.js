@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 const Stripe = require('stripe');
@@ -9,9 +10,27 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- Environment Variable Enforcement ---
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.ENCRYPTION_KEY) {
+    console.error('FATAL: ENCRYPTION_KEY must be set in production.');
+    console.error('Generate one: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    process.exit(1);
+  }
+  if (!process.env.JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET must be set in production.');
+    process.exit(1);
+  }
+}
+
 // --- Database Setup ---
-const db = new Database(path.join(__dirname, 'ideas.db'));
+const DB_PATH = path.join(__dirname, 'ideas.db');
+const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
+
+// Restrict DB file permissions (owner read/write only)
+try { fs.chmodSync(DB_PATH, 0o600); } catch { /* may fail on some platforms */ }
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS ideas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +71,16 @@ db.exec(`
   )
 `);
 
+// Consumed sessions table (prevents replay of Stripe session IDs)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS consumed_sessions (
+    session_id TEXT PRIMARY KEY,
+    consumed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+// Drop legacy table from previous version
+db.exec('DROP TABLE IF EXISTS payment_tokens');
+
 // --- Encryption ---
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
   ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
@@ -85,7 +114,11 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
-const paymentTokens = new Map();
+
+// Consumed session DB operations (replay prevention)
+const isSessionConsumed = db.prepare('SELECT 1 FROM consumed_sessions WHERE session_id = ?');
+const markSessionConsumed = db.prepare('INSERT OR IGNORE INTO consumed_sessions (session_id) VALUES (?)');
+const cleanOldSessions = db.prepare("DELETE FROM consumed_sessions WHERE consumed_at < datetime('now', '-24 hours')");
 
 // --- Rate Limiting ---
 const rateLimits = new Map();
@@ -104,9 +137,45 @@ function checkRateLimit(ip) {
   return true;
 }
 
+// Clean up stale rate limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimits) {
+    if (now > entry.resetTime) rateLimits.delete(ip);
+  }
+  // Also clean old consumed sessions
+  cleanOldSessions.run();
+}, 300000);
+
 // --- Middleware ---
-app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+// Trust proxy (required for correct req.ip behind Railway/nginx/etc.)
+app.set('trust proxy', 1);
+
 app.use(express.json({ limit: '200kb' }));
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self' https://api.stripe.com https://checkout.stripe.com",
+    "frame-src https://checkout.stripe.com",
+    "base-uri 'self'",
+    "form-action 'self'"
+  ].join('; '));
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Prepared Statements ---
@@ -373,44 +442,61 @@ app.post('/api/checkout', async (req, res) => {
   }
 });
 
-// Stripe webhook
-async function handleWebhook(req, res) {
-  if (!stripe) return res.status(503).send('Payments not configured');
-
-  let event;
-  try {
-    const sig = req.headers['stripe-signature'];
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+// Check payment status (polls Stripe directly, no webhook needed)
+app.get('/api/check-payment', async (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id || typeof session_id !== 'string') {
+    return res.status(400).json({ error: 'Missing session_id' });
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+  // Validate format: Stripe session IDs start with cs_test_ or cs_live_
+  if (!/^cs_(test|live)_[a-zA-Z0-9]+$/.test(session_id)) {
+    return res.status(400).json({ error: 'Invalid session_id format' });
+  }
+
+  if (!stripe) {
+    return res.status(503).json({ error: 'Payments not configured' });
+  }
+
+  // Rate limit to prevent Stripe API abuse
+  const ip = req.ip;
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
+  }
+
+  // Already redeemed? (prevents replay attacks)
+  if (isSessionConsumed.get(session_id)) {
+    return res.json({ token: null, error: 'Session already redeemed' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status !== 'paid') {
+      return res.json({ token: null });
+    }
+
+    // Atomically mark as consumed — INSERT OR IGNORE means only the first
+    // caller gets changes() === 1; concurrent duplicates get 0.
+    const result = markSessionConsumed.run(session_id);
+    if (result.changes === 0) {
+      return res.json({ token: null, error: 'Session already redeemed' });
+    }
+
     const token = jwt.sign(
-      { decryptionsRemaining: 999999, sessionId: session.id },
+      { decryptionsRemaining: 999999, sessionId: session_id },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
-    paymentTokens.set(session.id, token);
-  }
 
-  res.json({ received: true });
-}
-
-// Check payment status
-app.get('/api/check-payment', (req, res) => {
-  const { session_id } = req.query;
-  if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
-
-  const token = paymentTokens.get(session_id);
-  if (token) {
-    paymentTokens.delete(session_id);
     return res.json({ token });
+  } catch (err) {
+    if (err.type === 'StripeInvalidRequestError') {
+      return res.status(400).json({ error: 'Invalid session' });
+    }
+    console.error('check-payment error:', err.message);
+    return res.status(500).json({ error: 'Payment verification failed' });
   }
-
-  res.json({ token: null });
 });
 
 // Decrypt ideas

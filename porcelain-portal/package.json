@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "seed": "node seeder.js"
+    "seed": "node seeder.js",
+    "reset": "node reset.js"
   },
   "keywords": [],
   "author": "",
