@@ -71,14 +71,15 @@ db.exec(`
   )
 `);
 
-// Payment tokens table (persisted across restarts)
+// Consumed sessions table (prevents replay of Stripe session IDs)
 db.exec(`
-  CREATE TABLE IF NOT EXISTS payment_tokens (
+  CREATE TABLE IF NOT EXISTS consumed_sessions (
     session_id TEXT PRIMARY KEY,
-    token TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    consumed_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+// Drop legacy table from previous version
+db.exec('DROP TABLE IF EXISTS payment_tokens');
 
 // --- Encryption ---
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
@@ -114,11 +115,10 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
-// Payment token DB operations
-const insertPaymentToken = db.prepare('INSERT OR REPLACE INTO payment_tokens (session_id, token) VALUES (?, ?)');
-const getPaymentToken = db.prepare('SELECT token FROM payment_tokens WHERE session_id = ?');
-const deletePaymentToken = db.prepare('DELETE FROM payment_tokens WHERE session_id = ?');
-const cleanExpiredTokens = db.prepare("DELETE FROM payment_tokens WHERE created_at < datetime('now', '-2 hours')");
+// Consumed session DB operations (replay prevention)
+const isSessionConsumed = db.prepare('SELECT 1 FROM consumed_sessions WHERE session_id = ?');
+const markSessionConsumed = db.prepare('INSERT OR IGNORE INTO consumed_sessions (session_id) VALUES (?)');
+const cleanOldSessions = db.prepare("DELETE FROM consumed_sessions WHERE consumed_at < datetime('now', '-24 hours')");
 
 // --- Rate Limiting ---
 const rateLimits = new Map();
@@ -143,16 +143,14 @@ setInterval(() => {
   for (const [ip, entry] of rateLimits) {
     if (now > entry.resetTime) rateLimits.delete(ip);
   }
-  // Also clean expired payment tokens
-  cleanExpiredTokens.run();
+  // Also clean old consumed sessions
+  cleanOldSessions.run();
 }, 300000);
 
 // --- Middleware ---
 // Trust proxy (required for correct req.ip behind Railway/nginx/etc.)
 app.set('trust proxy', 1);
 
-// Stripe webhook must come before JSON body parser
-app.post('/api/webhook', express.raw({ type: 'application/json' }), handleWebhook);
 app.use(express.json({ limit: '200kb' }));
 
 // Security headers
@@ -444,44 +442,61 @@ app.post('/api/checkout', async (req, res) => {
   }
 });
 
-// Stripe webhook
-async function handleWebhook(req, res) {
-  if (!stripe) return res.status(503).send('Payments not configured');
-
-  let event;
-  try {
-    const sig = req.headers['stripe-signature'];
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+// Check payment status (polls Stripe directly, no webhook needed)
+app.get('/api/check-payment', async (req, res) => {
+  const { session_id } = req.query;
+  if (!session_id || typeof session_id !== 'string') {
+    return res.status(400).json({ error: 'Missing session_id' });
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+  // Validate format: Stripe session IDs start with cs_test_ or cs_live_
+  if (!/^cs_(test|live)_[a-zA-Z0-9]+$/.test(session_id)) {
+    return res.status(400).json({ error: 'Invalid session_id format' });
+  }
+
+  if (!stripe) {
+    return res.status(503).json({ error: 'Payments not configured' });
+  }
+
+  // Rate limit to prevent Stripe API abuse
+  const ip = req.ip;
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
+  }
+
+  // Already redeemed? (prevents replay attacks)
+  if (isSessionConsumed.get(session_id)) {
+    return res.json({ token: null, error: 'Session already redeemed' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status !== 'paid') {
+      return res.json({ token: null });
+    }
+
+    // Atomically mark as consumed — INSERT OR IGNORE means only the first
+    // caller gets changes() === 1; concurrent duplicates get 0.
+    const result = markSessionConsumed.run(session_id);
+    if (result.changes === 0) {
+      return res.json({ token: null, error: 'Session already redeemed' });
+    }
+
     const token = jwt.sign(
-      { decryptionsRemaining: 999999, sessionId: session.id },
+      { decryptionsRemaining: 999999, sessionId: session_id },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
-    insertPaymentToken.run(session.id, token);
+
+    return res.json({ token });
+  } catch (err) {
+    if (err.type === 'StripeInvalidRequestError') {
+      return res.status(400).json({ error: 'Invalid session' });
+    }
+    console.error('check-payment error:', err.message);
+    return res.status(500).json({ error: 'Payment verification failed' });
   }
-
-  res.json({ received: true });
-}
-
-// Check payment status
-app.get('/api/check-payment', (req, res) => {
-  const { session_id } = req.query;
-  if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
-
-  const row = getPaymentToken.get(session_id);
-  if (row) {
-    deletePaymentToken.run(session_id);
-    return res.json({ token: row.token });
-  }
-
-  res.json({ token: null });
 });
 
 // Decrypt ideas

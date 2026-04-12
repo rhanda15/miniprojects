@@ -26,7 +26,7 @@ db.exec('DELETE FROM reactions');
 db.exec('DELETE FROM ideas');
 db.exec('DELETE FROM usernames');
 db.exec('DELETE FROM graffiti');
-db.exec('DELETE FROM payment_tokens');
+db.exec('DELETE FROM consumed_sessions');
 
 // Reset autoincrement counters
 db.exec("DELETE FROM sqlite_sequence WHERE name IN ('ideas', 'reactions', 'graffiti')");
